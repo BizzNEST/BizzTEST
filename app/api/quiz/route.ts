@@ -19,11 +19,14 @@ export async function POST(request: NextRequest) {
       type: q.type,
       question: q.question,
       options: q.options,
-      correct_answer: q.correctAnswer,
+      correct_answer: q.type === 'multiple-choice-multiple' && Array.isArray(q.correctAnswer) 
+        ? q.correctAnswer.join(',') 
+        : q.correctAnswer,
       points: q.points || 1,
       has_correct_answer: q.type === 'short-answer' ? 
         (q.correctAnswer && q.correctAnswer.trim() !== '') : 
-        (q.correctAnswer !== undefined && q.correctAnswer !== '')
+        (q.correctAnswer !== undefined && q.correctAnswer !== '' && 
+         !(Array.isArray(q.correctAnswer) && q.correctAnswer.length === 0))
     }))
 
     const quizId = createQuiz(name, description || '', dbQuestions)

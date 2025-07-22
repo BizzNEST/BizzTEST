@@ -9,10 +9,11 @@ import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
+import { Checkbox } from "@/components/ui/checkbox"
 import { Badge } from "@/components/ui/badge"
 import { Plus, Trash2, GripVertical, Loader2 } from "lucide-react"
 
-type QuestionType = "multiple-choice" | "true-false" | "short-answer"
+type QuestionType = "multiple-choice-single" | "multiple-choice-multiple" | "true-false" | "short-answer"
 
 interface Question {
   id: string
@@ -42,7 +43,7 @@ export default function Component() {
   const addQuestion = () => {
     const newQuestion: Question = {
       id: Date.now().toString(),
-      type: "multiple-choice",
+      type: "multiple-choice-single",
       question: "",
       options: ["", "", "", ""],
       correctAnswer: "",
@@ -71,9 +72,13 @@ export default function Component() {
   const updateQuestionType = (id: string, type: QuestionType) => {
     const updates: Partial<Question> = { type }
 
-    if (type === "multiple-choice") {
+    if (type === "multiple-choice-single" || type === "multiple-choice-multiple") {
       updates.options = ["", "", "", ""]
-      updates.correctAnswer = ""
+      if (type === "multiple-choice-single") {
+        updates.correctAnswer = ""
+      } else {
+        updates.correctAnswer = []
+      }
     } else if (type === "true-false") {
       updates.options = undefined
       updates.correctAnswer = ""
@@ -121,12 +126,15 @@ export default function Component() {
       if (!question.question.trim()) {
         return `Question ${i + 1} text is required`
       }
-      if (question.type === "multiple-choice") {
+      if (question.type === "multiple-choice-single" || question.type === "multiple-choice-multiple") {
         if (!question.options || question.options.filter(opt => opt.trim()).length < 2) {
           return `Question ${i + 1} must have at least 2 non-empty options`
         }
-        if (!question.correctAnswer || question.correctAnswer === "") {
+        if (question.type === "multiple-choice-single" && (!question.correctAnswer || question.correctAnswer === "")) {
           return `Question ${i + 1} must have a correct answer selected`
+        }
+        if (question.type === "multiple-choice-multiple" && (!question.correctAnswer || (Array.isArray(question.correctAnswer) && question.correctAnswer.length === 0))) {
+          return `Question ${i + 1} must have at least one correct answer selected`
         }
       }
       if (question.type === "true-false" && (!question.correctAnswer || question.correctAnswer === "")) {
@@ -213,7 +221,8 @@ export default function Component() {
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="multiple-choice">Multiple Choice</SelectItem>
+                  <SelectItem value="multiple-choice-single">Multiple Choice (Single)</SelectItem>
+                  <SelectItem value="multiple-choice-multiple">Multiple Choice (Multiple)</SelectItem>
                   <SelectItem value="true-false">True/False</SelectItem>
                   <SelectItem value="short-answer">Short Answer</SelectItem>
                 </SelectContent>
@@ -234,7 +243,7 @@ export default function Component() {
             </div>
           </div>
 
-          {question.type === "multiple-choice" && (
+          {question.type === "multiple-choice-single" && (
             <div className="space-y-3">
               <div className="flex items-center justify-between">
                 <Label>Answer Options</Label>
@@ -271,6 +280,54 @@ export default function Component() {
                 ))}
               </RadioGroup>
               <p className="text-sm text-muted-foreground">Select the radio button next to the correct answer</p>
+            </div>
+          )}
+
+          {question.type === "multiple-choice-multiple" && (
+            <div className="space-y-3">
+              <div className="flex items-center justify-between">
+                <Label>Answer Options</Label>
+                <Button type="button" variant="outline" size="sm" onClick={() => addOption(question.id)}>
+                  <Plus className="h-3 w-3 mr-1" />
+                  Add Option
+                </Button>
+              </div>
+              <div className="space-y-2">
+                {question.options?.map((option, optionIndex) => (
+                  <div key={optionIndex} className="flex items-center gap-2">
+                    <Checkbox
+                      id={`${question.id}-option-${optionIndex}`}
+                      checked={question.correctAnswer?.includes(optionIndex.toString())}
+                      onCheckedChange={(checked) => {
+                        const currentCorrectAnswers = question.correctAnswer as string[] || [];
+                        if (checked) {
+                          updateQuestion(question.id, { correctAnswer: [...currentCorrectAnswers, optionIndex.toString()] });
+                        } else {
+                          updateQuestion(question.id, { correctAnswer: currentCorrectAnswers.filter(ans => ans !== optionIndex.toString()) });
+                        }
+                      }}
+                    />
+                    <Input
+                      placeholder={`Option ${optionIndex + 1}`}
+                      value={option}
+                      onChange={(e) => updateOption(question.id, optionIndex, e.target.value)}
+                      className="flex-1"
+                    />
+                    {question.options && question.options.length > 2 && (
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => removeOption(question.id, optionIndex)}
+                        className="text-destructive hover:text-destructive"
+                      >
+                        <Trash2 className="h-3 w-3" />
+                      </Button>
+                    )}
+                  </div>
+                ))}
+              </div>
+              <p className="text-sm text-muted-foreground">Select the checkboxes next to the correct answers</p>
             </div>
           )}
 

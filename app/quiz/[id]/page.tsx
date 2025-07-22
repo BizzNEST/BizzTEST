@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Label } from "@/components/ui/label"
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
+import { Checkbox } from "@/components/ui/checkbox"
 import { Textarea } from "@/components/ui/textarea"
 import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
@@ -13,7 +14,7 @@ import { CheckCircle, XCircle, Clock, Award, Loader2, User } from "lucide-react"
 
 interface Question {
   id: number
-  type: "multiple-choice" | "true-false" | "short-answer"
+  type: "multiple-choice-single" | "multiple-choice-multiple" | "true-false" | "short-answer"
   question: string
   options?: string[]
   correct_answer?: string
@@ -96,6 +97,16 @@ export default function QuizPage() {
             correctAnswers++
             earnedPoints += question.points
           }
+        } else if (question.type === "multiple-choice-multiple") {
+          if (userAnswer && question.correct_answer) {
+            const userSelections = userAnswer.split(',').filter(a => a !== '').sort()
+            const correctSelections = question.correct_answer.split(',').sort()
+            if (userSelections.length === correctSelections.length && 
+                userSelections.every((val, index) => val === correctSelections[index])) {
+              correctAnswers++
+              earnedPoints += question.points
+            }
+          }
         } else {
           if (userAnswer === question.correct_answer) {
             correctAnswers++
@@ -173,6 +184,14 @@ export default function QuizPage() {
 
     if (question.type === "short-answer") {
       return userAnswer.toLowerCase().trim() === question.correct_answer?.toLowerCase() ? "correct" : "incorrect"
+    }
+
+    if (question.type === "multiple-choice-multiple") {
+      if (!question.correct_answer) return "incorrect"
+      const userSelections = userAnswer.split(',').filter(a => a !== '').sort()
+      const correctSelections = question.correct_answer.split(',').sort()
+      return userSelections.length === correctSelections.length && 
+             userSelections.every((val, index) => val === correctSelections[index]) ? "correct" : "incorrect"
     }
 
     return userAnswer === question.correct_answer ? "correct" : "incorrect"
@@ -331,8 +350,10 @@ export default function QuizPage() {
                   <div>
                     <Label className="text-sm font-medium">Your Answer:</Label>
                     <p className="text-sm bg-gray-50 p-2 rounded mt-1">
-                      {question.type === "multiple-choice" && question.options
+                      {question.type === "multiple-choice-single" && question.options
                         ? question.options[Number.parseInt(userAnswer)] || userAnswer
+                        : question.type === "multiple-choice-multiple" && question.options
+                        ? userAnswer.split(',').filter(a => a !== '').map(idx => question.options![Number.parseInt(idx)]).join(', ') || "No answers selected"
                         : userAnswer}
                     </p>
                   </div>
@@ -341,8 +362,10 @@ export default function QuizPage() {
                     <div>
                       <Label className="text-sm font-medium text-green-700">Correct Answer:</Label>
                       <p className="text-sm bg-green-50 p-2 rounded mt-1">
-                        {question.type === "multiple-choice" && question.options
+                        {question.type === "multiple-choice-single" && question.options
                           ? question.options[Number.parseInt(question.correct_answer!)]
+                          : question.type === "multiple-choice-multiple" && question.options
+                          ? question.correct_answer!.split(',').map(idx => question.options![Number.parseInt(idx)]).join(', ')
                           : question.correct_answer}
                       </p>
                     </div>
@@ -400,7 +423,7 @@ export default function QuizPage() {
           <CardDescription className="text-base text-foreground">{question.question}</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
-          {question.type === "multiple-choice" && (
+          {question.type === "multiple-choice-single" && (
             <RadioGroup
               value={answers[question.id.toString()] || ""}
               onValueChange={(value) => handleAnswerChange(question.id.toString(), value)}
@@ -414,6 +437,32 @@ export default function QuizPage() {
                 </div>
               ))}
             </RadioGroup>
+          )}
+
+          {question.type === "multiple-choice-multiple" && (
+            <div className="space-y-3">
+              {question.options?.map((option, index) => (
+                <div key={index} className="flex items-center space-x-2">
+                  <Checkbox
+                    id={`option-${index}`}
+                    checked={answers[question.id.toString()]?.split(',').includes(index.toString()) || false}
+                    onCheckedChange={(checked) => {
+                      const currentAnswers = answers[question.id.toString()]?.split(',').filter(a => a !== '') || [];
+                      if (checked) {
+                        const newAnswers = [...currentAnswers, index.toString()];
+                        handleAnswerChange(question.id.toString(), newAnswers.join(','));
+                      } else {
+                        const newAnswers = currentAnswers.filter(val => val !== index.toString());
+                        handleAnswerChange(question.id.toString(), newAnswers.join(','));
+                      }
+                    }}
+                  />
+                  <Label htmlFor={`option-${index}`} className="flex-1 cursor-pointer">
+                    {option}
+                  </Label>
+                </div>
+              ))}
+            </div>
           )}
 
           {question.type === "true-false" && (

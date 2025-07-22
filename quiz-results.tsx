@@ -28,7 +28,7 @@ interface QuizSubmission {
 interface Answer {
   questionId: string
   questionText: string
-  questionType: "multiple-choice" | "true-false" | "short-answer"
+  questionType: "multiple-choice-single" | "multiple-choice-multiple" | "true-false" | "short-answer"
   studentAnswer: string
   correctAnswer?: string
   isCorrect?: boolean
@@ -106,6 +106,13 @@ export default function QuizResults() {
       if (question.has_correct_answer) {
         if (question.type === 'short-answer') {
           isCorrect = userAnswer.toLowerCase().trim() === question.correct_answer?.toLowerCase()
+        } else if (question.type === 'multiple-choice-multiple') {
+          if (question.correct_answer) {
+            const userSelections = userAnswer.split(',').filter(a => a !== '').sort()
+            const correctSelections = question.correct_answer.split(',').sort()
+            isCorrect = userSelections.length === correctSelections.length && 
+                       userSelections.every((val, index) => val === correctSelections[index])
+          }
         } else {
           isCorrect = userAnswer === question.correct_answer
         }
@@ -254,7 +261,7 @@ export default function QuizResults() {
                   </div>
 
                   <div className="space-y-3">
-                    {answer.questionType === "multiple-choice" && answer.options && (
+                    {answer.questionType === "multiple-choice-single" && answer.options && (
                       <div>
                         <p className="text-sm font-medium text-muted-foreground mb-2">Options:</p>
                         <div className="space-y-1">
@@ -275,7 +282,7 @@ export default function QuizResults() {
                             >
                               <span className="font-medium">{String.fromCharCode(65 + optionIndex)}.</span> {option}
                               {answer.studentAnswer === optionIndex.toString() && (
-                                <span className="ml-2 text-xs font-medium">Your answer</span>
+                                <span className="ml-2 text-xs font-medium">User answer</span>
                               )}
                               {answer.correctAnswer === optionIndex.toString() && answer.hasCorrectAnswer && (
                                 <span className="ml-2 text-xs font-medium text-green-600">Correct answer</span>
@@ -286,9 +293,41 @@ export default function QuizResults() {
                       </div>
                     )}
 
+                    {answer.questionType === "multiple-choice-multiple" && answer.options && (
+                      <div>
+                        <p className="text-sm font-medium text-muted-foreground mb-2">Options:</p>
+                        <div className="space-y-1">
+                          {answer.options.map((option, optionIndex) => (
+                            <div
+                              key={optionIndex}
+                              className={`p-2 rounded text-sm ${
+                                answer.studentAnswer.includes(optionIndex.toString())
+                                  ? answer.hasCorrectAnswer && answer.isCorrect
+                                    ? "bg-green-50 border border-green-200"
+                                    : answer.hasCorrectAnswer
+                                    ? "bg-red-50 border border-red-200"
+                                    : "bg-blue-50 border border-blue-200"
+                                  : answer.correctAnswer?.includes(optionIndex.toString()) && answer.hasCorrectAnswer
+                                  ? "bg-green-50 border border-green-200"
+                                  : "bg-gray-50"
+                              }`}
+                            >
+                              <span className="font-medium">{String.fromCharCode(65 + optionIndex)}.</span> {option}
+                              {answer.studentAnswer.includes(optionIndex.toString()) && (
+                                <span className="ml-2 text-xs font-medium">User answer</span>
+                              )}
+                              {answer.correctAnswer?.includes(optionIndex.toString()) && answer.hasCorrectAnswer && (
+                                <span className="ml-2 text-xs font-medium text-green-600">Correct answer</span>
+                              )}
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
                     {(answer.questionType === "true-false" || answer.questionType === "short-answer") && (
                       <div>
-                        <p className="text-sm font-medium text-muted-foreground">Your answer:</p>
+                        <p className="text-sm font-medium text-muted-foreground">User answer:</p>
                         <p className="text-sm bg-gray-50 p-2 rounded">
                           {answer.studentAnswer || "No answer provided"}
                         </p>

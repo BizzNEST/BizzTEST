@@ -2,11 +2,19 @@ import { createQuiz } from '../lib/db'
 
 const sampleQuestions = [
   {
-    type: 'multiple-choice' as const,
+    type: 'multiple-choice-single' as const,
     question: 'What is the capital of France?',
     options: ['London', 'Berlin', 'Paris', 'Madrid'],
     correct_answer: '2', // Paris
     points: 2,
+    has_correct_answer: true,
+  },
+  {
+    type: 'multiple-choice-multiple' as const,
+    question: 'Which of the following are programming languages? (Select all that apply)',
+    options: ['JavaScript', 'HTML', 'Python', 'CSS', 'Java'],
+    correct_answer: '0,2,4', // JavaScript, Python, Java
+    points: 3,
     has_correct_answer: true,
   },
   {
@@ -24,7 +32,7 @@ const sampleQuestions = [
     has_correct_answer: true,
   },
   {
-    type: 'multiple-choice' as const,
+    type: 'multiple-choice-single' as const,
     question: 'What is your favorite programming language? (Open-ended)',
     options: ['JavaScript', 'Python', 'Java', 'C++', 'Other'],
     points: 1,

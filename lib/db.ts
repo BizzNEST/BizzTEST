@@ -20,7 +20,7 @@ db.exec(`
   CREATE TABLE IF NOT EXISTS questions (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     quiz_id TEXT NOT NULL,
-    type TEXT NOT NULL CHECK (type IN ('multiple-choice', 'true-false', 'short-answer')),
+    type TEXT NOT NULL CHECK (type IN ('multiple-choice-single', 'multiple-choice-multiple', 'true-false', 'short-answer')),
     question TEXT NOT NULL,
     options TEXT, -- JSON string for multiple choice options
     correct_answer TEXT,
@@ -52,12 +52,23 @@ export interface Quiz {
 export interface Question {
   id: number
   quiz_id: string
-  type: 'multiple-choice' | 'true-false' | 'short-answer'
+  type: 'multiple-choice-single' | 'multiple-choice-multiple' | 'true-false' | 'short-answer'
   question: string
   options?: string[]
   correct_answer?: string
   points: number
   has_correct_answer: boolean
+}
+
+interface RawQuestion {
+  id: number
+  quiz_id: string
+  type: 'multiple-choice-single' | 'multiple-choice-multiple' | 'true-false' | 'short-answer'
+  question: string
+  options?: string // JSON string in database
+  correct_answer?: string
+  points: number
+  has_correct_answer: number // SQLite boolean as number
 }
 
 export interface QuizWithQuestions extends Quiz {
@@ -69,10 +80,10 @@ export const getQuizById = (id: string): QuizWithQuestions | null => {
   const quiz = db.prepare('SELECT * FROM quizzes WHERE id = ?').get(id) as Quiz | undefined
   if (!quiz) return null
 
-  const questions = db.prepare('SELECT * FROM questions WHERE quiz_id = ?').all(id) as Question[]
+  const questions = db.prepare('SELECT * FROM questions WHERE quiz_id = ?').all(id) as RawQuestion[]
   
   // Parse options JSON
-  const parsedQuestions = questions.map(q => ({
+  const parsedQuestions: Question[] = questions.map(q => ({
     ...q,
     options: q.options ? JSON.parse(q.options) : undefined,
     has_correct_answer: Boolean(q.has_correct_answer)
@@ -128,6 +139,16 @@ export const submitQuizAnswers = (quizId: string, studentName: string, studentEm
       if (question.type === 'short-answer') {
         if (userAnswer?.toLowerCase().trim() === question.correct_answer?.toLowerCase()) {
           score += question.points
+        }
+      } else if (question.type === 'multiple-choice-multiple') {
+        // For multiple choice multiple, both user answer and correct answer are comma-separated strings
+        if (userAnswer && question.correct_answer) {
+          const userSelections = userAnswer.split(',').sort()
+          const correctSelections = question.correct_answer.split(',').sort()
+          if (userSelections.length === correctSelections.length && 
+              userSelections.every((val, index) => val === correctSelections[index])) {
+            score += question.points
+          }
         }
       } else {
         if (userAnswer === question.correct_answer) {
