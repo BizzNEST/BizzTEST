@@ -8,9 +8,11 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Lock, User } from "lucide-react"
+import { useAuth } from "@/hooks/use-auth"
 
 export default function LoginPage() {
   const router = useRouter()
+  const { login } = useAuth()
   const [username, setUsername] = useState("")
   const [password, setPassword] = useState("")
   const [error, setError] = useState("")
@@ -24,8 +26,8 @@ export default function LoginPage() {
     // Simulate a brief loading state for better UX
     await new Promise(resolve => setTimeout(resolve, 500))
 
-    if (username === "admin" && password === "admin") {
-      localStorage.setItem("authenticated", "true")
+    if (username === "admin" && password === "BizzTEST") {
+      login()
       router.push("/create-quiz")
     } else {
       setError("Invalid username or password")
@@ -102,10 +104,6 @@ export default function LoginPage() {
             </form>
           </CardContent>
         </Card>
-        
-        <div className="text-center text-sm text-gray-600">
-          <p>Demo credentials: admin / admin</p>
-        </div>
       </div>
     </div>
   )

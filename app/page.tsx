@@ -4,33 +4,40 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Plus, BookOpen, BarChart3 } from "lucide-react"
 import Link from "next/link"
+import { useAuth } from "@/hooks/use-auth"
 
 export default function Page() {
+  const { isAuthenticated } = useAuth()
+
   return (
     <div className="max-w-6xl mx-auto p-6">
       <div className="text-center mb-12">
-        <h1 className="text-5xl font-bold text-gray-800 mb-4">Quiz Builder</h1>
+        <h1 className="text-5xl font-bold text-gray-800 mb-4">BizzTEST</h1>
         <p className="text-xl text-gray-600 mb-8">Create, share, and take quizzes easily</p>
         
         <div className="flex flex-col sm:flex-row gap-4 justify-center">
-          <Link href="/create-quiz">
-            <Button size="lg" className="w-full sm:w-auto">
-              <Plus className="h-5 w-5 mr-2" />
-              Create Quiz
-            </Button>
-          </Link>
+          {isAuthenticated && (
+            <Link href="/create-quiz">
+              <Button size="lg" className="w-full sm:w-auto">
+                <Plus className="h-5 w-5 mr-2" />
+                Create Quiz
+              </Button>
+            </Link>
+          )}
           <Link href="/quizzes">
             <Button size="lg" variant="outline" className="w-full sm:w-auto">
               <BookOpen className="h-5 w-5 mr-2" />
               View All Quizzes
             </Button>
           </Link>
-          <Link href="/results">
-            <Button size="lg" variant="outline" className="w-full sm:w-auto">
-              <BarChart3 className="h-5 w-5 mr-2" />
-              View Results
-            </Button>
-          </Link>
+          {isAuthenticated && (
+            <Link href="/results">
+              <Button size="lg" variant="outline" className="w-full sm:w-auto">
+                <BarChart3 className="h-5 w-5 mr-2" />
+                View Results
+              </Button>
+            </Link>
+          )}
         </div>
       </div>
 

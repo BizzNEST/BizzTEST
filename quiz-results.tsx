@@ -319,18 +319,18 @@ export default function QuizResults() {
         </div>
 
         <div className="flex flex-col sm:flex-row gap-3">
-          <div className="relative">
+          {/* <div className="relative">
             <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
             <input
               type="search"
               placeholder="Search submissions..."
               className="pl-8 h-10 w-full sm:w-[250px] rounded-md border border-input bg-background px-3 py-2 text-sm"
             />
-          </div>
-          <Button variant="outline" className="flex items-center gap-2 bg-transparent">
+          </div> */}
+          {/* <Button variant="outline" className="flex items-center gap-2 bg-transparent">
             <Download className="h-4 w-4" />
             Export All
-          </Button>
+          </Button> */}
         </div>
       </div>
 

@@ -6,6 +6,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Badge } from "@/components/ui/badge"
 import { Copy, ExternalLink, Plus, BookOpen, Loader2, CheckCircle } from "lucide-react"
 import Link from "next/link"
+import { useAuth } from "@/hooks/use-auth"
 
 interface Quiz {
   id: string
@@ -15,6 +16,7 @@ interface Quiz {
 }
 
 export default function QuizzesPage() {
+  const { isAuthenticated } = useAuth()
   const [quizzes, setQuizzes] = useState<Quiz[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -89,14 +91,16 @@ export default function QuizzesPage() {
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
         <div>
           <h1 className="text-3xl font-bold">All Quizzes</h1>
-          <p className="text-muted-foreground">Manage and share your quizzes</p>
+          <p className="text-muted-foreground">Browse available quizzes{isAuthenticated ? ' and manage your creations' : ''}</p>
         </div>
-        <Link href="/create">
-          <Button className="flex items-center gap-2">
-            <Plus className="h-4 w-4" />
-            Create New Quiz
-          </Button>
-        </Link>
+        {isAuthenticated && (
+          <Link href="/create-quiz">
+            <Button className="flex items-center gap-2">
+              <Plus className="h-4 w-4" />
+              Create New Quiz
+            </Button>
+          </Link>
+        )}
       </div>
 
       {quizzes.length === 0 ? (
@@ -104,7 +108,17 @@ export default function QuizzesPage() {
           <CardContent className="p-8 text-center">
             <BookOpen className="h-16 w-16 text-muted-foreground mx-auto mb-4" />
             <h3 className="text-lg font-semibold mb-2">No quizzes yet</h3>
-            <p className="text-muted-foreground mb-4">Come back later!</p>
+            <p className="text-muted-foreground mb-4">
+              {isAuthenticated ? "Create your first quiz to get started" : "Come back later when quizzes are available!"}
+            </p>
+            {isAuthenticated && (
+              <Link href="/create-quiz">
+                <Button>
+                  <Plus className="h-4 w-4 mr-2" />
+                  Create Quiz
+                </Button>
+              </Link>
+            )}
           </CardContent>
         </Card>
       ) : (
