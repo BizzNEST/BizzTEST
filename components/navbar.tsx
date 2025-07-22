@@ -1,7 +1,7 @@
 "use client"
 
 import { Button } from "@/components/ui/button"
-import { BookOpen, Plus, BarChart3 } from "lucide-react"
+import { BookOpen, Plus, BarChart3, List } from "lucide-react"
 import Link from "next/link"
 
 export function Navbar() {
@@ -17,14 +17,17 @@ export function Navbar() {
           </div>
 
           <div className="flex items-center space-x-4">
-            <Link href="/">
+            <Link href="/create-quiz">
               <Button variant="ghost">
                 <Plus className="h-4 w-4 mr-2" />
                 Create Quiz
               </Button>
             </Link>
-            <Link href="/quiz/1">
-              <Button variant="ghost">Take Sample Quiz</Button>
+            <Link href="/quizzes">
+              <Button variant="ghost">
+                <List className="h-4 w-4 mr-2" />
+                All Quizzes
+              </Button>
             </Link>
             <Link href="/results">
               <Button>

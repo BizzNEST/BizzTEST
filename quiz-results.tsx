@@ -389,11 +389,11 @@ export default function QuizResults() {
 
           <Tabs defaultValue="all">
             <div className="flex items-center justify-between">
-              <TabsList>
+              {/* <TabsList>
                 <TabsTrigger value="all">All Submissions</TabsTrigger>
                 <TabsTrigger value="graded">Graded</TabsTrigger>
                 <TabsTrigger value="needs-review">Needs Review</TabsTrigger>
-              </TabsList>
+              </TabsList> */}
             </div>
 
             <TabsContent value="all" className="mt-4">

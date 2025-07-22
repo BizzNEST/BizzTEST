@@ -161,7 +161,7 @@ export default function Component() {
       }
 
       const result = await response.json()
-      router.push(`/quiz/${result.id}`)
+      router.push(`/quizzes`)
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to create quiz')
     } finally {
