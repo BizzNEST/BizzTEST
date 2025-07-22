@@ -13,7 +13,7 @@ import { Checkbox } from "@/components/ui/checkbox"
 import { Badge } from "@/components/ui/badge"
 import { Plus, Trash2, GripVertical, Loader2 } from "lucide-react"
 
-type QuestionType = "multiple-choice-single" | "multiple-choice-multiple" | "true-false" | "short-answer"
+type QuestionType = "multiple-choice-single" | "multiple-choice-multiple" | "true-false" | "short-answer" | "file-upload"
 
 interface Question {
   id: string
@@ -82,6 +82,9 @@ export default function Component() {
     } else if (type === "true-false") {
       updates.options = undefined
       updates.correctAnswer = ""
+    } else if (type === "file-upload") {
+      updates.options = undefined
+      updates.correctAnswer = ""
     } else {
       updates.options = undefined
       updates.correctAnswer = ""
@@ -140,6 +143,7 @@ export default function Component() {
       if (question.type === "true-false" && (!question.correctAnswer || question.correctAnswer === "")) {
         return `Question ${i + 1} must have a correct answer selected`
       }
+      // File upload questions don't require validation as they are open-ended
     }
     return null
   }
@@ -225,6 +229,7 @@ export default function Component() {
                   <SelectItem value="multiple-choice-multiple">Multiple Choice (Multiple)</SelectItem>
                   <SelectItem value="true-false">True/False</SelectItem>
                   <SelectItem value="short-answer">Short Answer</SelectItem>
+                  <SelectItem value="file-upload">File Upload</SelectItem>
                 </SelectContent>
               </Select>
               <div>
@@ -361,6 +366,16 @@ export default function Component() {
               />
               <p className="text-sm text-muted-foreground">
                 If left blank, this will be treated as an open-ended question requiring manual grading
+              </p>
+            </div>
+          )}
+
+          {question.type === "file-upload" && (
+            <div className="space-y-3">
+              <Label htmlFor={`answer-${question.id}`}>Expected Answer (Optional)</Label>
+              <p className="text-sm text-muted-foreground">
+                File upload questions do not have a specific expected answer.
+                Students will upload a file, and you will grade it manually.
               </p>
             </div>
           )}

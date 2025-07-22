@@ -25,6 +25,7 @@ export async function POST(request: NextRequest) {
       points: q.points || 1,
       has_correct_answer: q.type === 'short-answer' ? 
         (q.correctAnswer && q.correctAnswer.trim() !== '') : 
+        q.type === 'file-upload' ? false :
         (q.correctAnswer !== undefined && q.correctAnswer !== '' && 
          !(Array.isArray(q.correctAnswer) && q.correctAnswer.length === 0))
     }))

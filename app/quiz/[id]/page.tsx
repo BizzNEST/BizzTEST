@@ -10,11 +10,12 @@ import { Checkbox } from "@/components/ui/checkbox"
 import { Textarea } from "@/components/ui/textarea"
 import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
-import { CheckCircle, XCircle, Clock, Award, Loader2, User } from "lucide-react"
+import { FileUpload } from "@/components/ui/file-upload"
+import { CheckCircle, XCircle, Clock, Award, Loader2, User, Download, Maximize2 } from "lucide-react"
 
 interface Question {
   id: number
-  type: "multiple-choice-single" | "multiple-choice-multiple" | "true-false" | "short-answer"
+  type: "multiple-choice-single" | "multiple-choice-multiple" | "true-false" | "short-answer" | "file-upload"
   question: string
   options?: string[]
   correct_answer?: string
@@ -173,7 +174,8 @@ export default function QuizPage() {
   }
 
   const isAnswered = (questionId: string) => {
-    return answers[questionId] && answers[questionId].trim() !== ""
+    const answer = answers[questionId]
+    return answer && answer.trim() !== ""
   }
 
   const getAnswerStatus = (question: Question) => {
@@ -195,6 +197,42 @@ export default function QuizPage() {
     }
 
     return userAnswer === question.correct_answer ? "correct" : "incorrect"
+  }
+
+  const getDisplayAnswer = (question: Question, userAnswer: string) => {
+    if (question.type === "multiple-choice-single" && question.options) {
+      return question.options[Number.parseInt(userAnswer)] || userAnswer
+    }
+    if (question.type === "multiple-choice-multiple" && question.options) {
+      return userAnswer.split(',').filter(a => a !== '').map(idx => question.options![Number.parseInt(idx)]).join(', ') || "No answers selected"
+    }
+    if (question.type === "file-upload") {
+      if (!userAnswer) return "No file uploaded"
+      const isImageUrl = /\.(jpg|jpeg|png|gif|webp)$/i.test(userAnswer) || userAnswer.startsWith('http')
+      return isImageUrl ? "Image uploaded/provided" : "File uploaded"
+    }
+    return userAnswer
+  }
+
+  const openImageInNewTab = (src: string) => {
+    window.open(src, '_blank', 'noopener,noreferrer')
+  }
+
+  const downloadImage = async (src: string, filename?: string) => {
+    try {
+      const response = await fetch(src)
+      const blob = await response.blob()
+      const url = window.URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = filename || `image_${Date.now()}.jpg`
+      document.body.appendChild(a)
+      a.click()
+      document.body.removeChild(a)
+      window.URL.revokeObjectURL(url)
+    } catch (error) {
+      console.error('Download failed:', error)
+    }
   }
 
   if (loading) {
@@ -344,18 +382,76 @@ export default function QuizPage() {
                       {status === "open-ended" && <Clock className="h-5 w-5 text-blue-500" />}
                     </div>
                   </div>
-                  <p className="text-base font-normal">{question.question}</p>
+                  {question.type === "file-upload" ? (
+                    <div className="prose prose-sm max-w-none">
+                      <pre className="text-sm text-foreground whitespace-pre-wrap font-sans leading-relaxed bg-gray-50 p-3 rounded border">
+                        {question.question}
+                      </pre>
+                    </div>
+                  ) : (
+                    <p className="text-base font-normal">{question.question}</p>
+                  )}
                 </CardHeader>
                 <CardContent className="space-y-3">
                   <div>
                     <Label className="text-sm font-medium">Your Answer:</Label>
                     <p className="text-sm bg-gray-50 p-2 rounded mt-1">
-                      {question.type === "multiple-choice-single" && question.options
-                        ? question.options[Number.parseInt(userAnswer)] || userAnswer
-                        : question.type === "multiple-choice-multiple" && question.options
-                        ? userAnswer.split(',').filter(a => a !== '').map(idx => question.options![Number.parseInt(idx)]).join(', ') || "No answers selected"
-                        : userAnswer}
+                      {getDisplayAnswer(question, userAnswer)}
                     </p>
+                    {question.type === "file-upload" && userAnswer && (
+                      <div className="mt-2">
+                        {/\.(jpg|jpeg|png|gif|webp)$/i.test(userAnswer) || userAnswer.startsWith('http') ? (
+                          <div className="space-y-2">
+                            <div className="relative group">
+                              <img
+                                src={userAnswer}
+                                alt="Uploaded answer"
+                                className="max-w-full h-48 object-cover rounded border cursor-pointer hover:opacity-90 transition-opacity"
+                                onClick={() => openImageInNewTab(userAnswer)}
+                                onError={(e) => {
+                                  const target = e.target as HTMLImageElement
+                                  target.style.display = 'none'
+                                  const errorText = document.createElement('p')
+                                  errorText.textContent = 'Image could not be loaded'
+                                  errorText.className = 'text-sm text-red-500 italic'
+                                  target.parentNode?.appendChild(errorText)
+                                }}
+                              />
+                              <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                                <Button
+                                  size="sm"
+                                  variant="secondary"
+                                  onClick={(e) => {
+                                    e.stopPropagation()
+                                    openImageInNewTab(userAnswer)
+                                  }}
+                                  className="mr-1"
+                                >
+                                  <Maximize2 className="h-3 w-3" />
+                                </Button>
+                                <Button
+                                  size="sm"
+                                  variant="secondary"
+                                  onClick={(e) => {
+                                    e.stopPropagation()
+                                    downloadImage(userAnswer, `quiz_answer_${question.id}`)
+                                  }}
+                                >
+                                  <Download className="h-3 w-3" />
+                                </Button>
+                              </div>
+                            </div>
+                            <p className="text-xs text-muted-foreground">Click image to open in new tab • Hover to access controls</p>
+                          </div>
+                        ) : (
+                          <p className="text-sm text-blue-600">
+                            <a href={userAnswer} target="_blank" rel="noopener noreferrer" className="underline">
+                              View file/link
+                            </a>
+                          </p>
+                        )}
+                      </div>
+                    )}
                   </div>
 
                   {question.has_correct_answer && (
@@ -420,7 +516,17 @@ export default function QuizPage() {
               {!question.has_correct_answer && <Badge variant="secondary">Open-ended</Badge>}
             </div>
           </div>
-          <CardDescription className="text-base text-foreground">{question.question}</CardDescription>
+          {question.type === "file-upload" ? (
+            <div className="space-y-3">
+              <div className="prose prose-sm max-w-none">
+                <pre className="text-sm text-foreground whitespace-pre-wrap font-sans leading-relaxed bg-gray-50 p-4 rounded border">
+                  {question.question}
+                </pre>
+              </div>
+            </div>
+          ) : (
+            <CardDescription className="text-base text-foreground">{question.question}</CardDescription>
+          )}
         </CardHeader>
         <CardContent className="space-y-4">
           {question.type === "multiple-choice-single" && (
@@ -494,6 +600,13 @@ export default function QuizPage() {
                 className="min-h-[100px]"
               />
             </div>
+          )}
+
+          {question.type === "file-upload" && (
+            <FileUpload
+              onFileUpload={(fileUrl) => handleAnswerChange(question.id.toString(), fileUrl)}
+              currentValue={answers[question.id.toString()]}
+            />
           )}
         </CardContent>
       </Card>

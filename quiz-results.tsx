@@ -6,7 +6,7 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Badge } from "@/components/ui/badge"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
-import { CheckCircle, XCircle, Clock, ChevronRight, Search, Download, BarChart3, Users, Loader2 } from "lucide-react"
+import { CheckCircle, XCircle, Clock, ChevronRight, Search, Download, BarChart3, Users, Loader2, Maximize2 } from "lucide-react"
 
 // Types
 interface QuizSubmission {
@@ -28,7 +28,7 @@ interface QuizSubmission {
 interface Answer {
   questionId: string
   questionText: string
-  questionType: "multiple-choice-single" | "multiple-choice-multiple" | "true-false" | "short-answer"
+  questionType: "multiple-choice-single" | "multiple-choice-multiple" | "true-false" | "short-answer" | "file-upload"
   studentAnswer: string
   correctAnswer?: string
   isCorrect?: boolean
@@ -131,6 +131,27 @@ export default function QuizResults() {
         hasCorrectAnswer: question.has_correct_answer
       }
     })
+  }
+
+  const openImageInNewTab = (src: string) => {
+    window.open(src, '_blank', 'noopener,noreferrer')
+  }
+
+  const downloadImage = async (src: string, filename?: string) => {
+    try {
+      const response = await fetch(src)
+      const blob = await response.blob()
+      const url = window.URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = filename || `image_${Date.now()}.jpg`
+      document.body.appendChild(a)
+      a.click()
+      document.body.removeChild(a)
+      window.URL.revokeObjectURL(url)
+    } catch (error) {
+      console.error('Download failed:', error)
+    }
   }
 
   if (loading) {
@@ -238,7 +259,18 @@ export default function QuizResults() {
                   <div className="flex items-start justify-between mb-2">
                     <div className="flex items-center gap-2">
                       <Badge variant="outline">Q{index + 1}</Badge>
-                      <h3 className="font-medium">{answer.questionText}</h3>
+                      {answer.questionType === "file-upload" ? (
+                        <div className="flex-1">
+                          <h3 className="font-medium mb-2">File Upload Question</h3>
+                          <div className="prose prose-sm max-w-none">
+                            <pre className="text-xs text-foreground whitespace-pre-wrap font-sans leading-relaxed bg-gray-50 p-2 rounded border">
+                              {answer.questionText}
+                            </pre>
+                          </div>
+                        </div>
+                      ) : (
+                        <h3 className="font-medium">{answer.questionText}</h3>
+                      )}
                     </div>
                     <div className="flex items-center gap-2">
                       <Badge variant="outline">{answer.points} pts</Badge>
@@ -325,12 +357,68 @@ export default function QuizResults() {
                       </div>
                     )}
 
-                    {(answer.questionType === "true-false" || answer.questionType === "short-answer") && (
+                    {(answer.questionType === "true-false" || answer.questionType === "short-answer" || answer.questionType === "file-upload") && (
                       <div>
                         <p className="text-sm font-medium text-muted-foreground">User answer:</p>
-                        <p className="text-sm bg-gray-50 p-2 rounded">
-                          {answer.studentAnswer || "No answer provided"}
-                        </p>
+                        {answer.questionType === "file-upload" && answer.studentAnswer ? (
+                          <div className="space-y-2">
+                            <p className="text-sm bg-gray-50 p-2 rounded">
+                              {answer.studentAnswer.startsWith('http') ? 'URL provided' : 'File uploaded'}
+                            </p>
+                            {(/\.(jpg|jpeg|png|gif|webp)$/i.test(answer.studentAnswer) || answer.studentAnswer.startsWith('http')) && (
+                              <div className="space-y-2">
+                                <div className="relative group">
+                                  <img
+                                    src={answer.studentAnswer}
+                                    alt="Student upload"
+                                    className="max-w-full h-32 object-cover rounded border cursor-pointer hover:opacity-90 transition-opacity"
+                                    onClick={(e) => {
+                                      console.log('Image clicked, answer:', answer.studentAnswer)
+                                      e.preventDefault()
+                                      e.stopPropagation()
+                                      openImageInNewTab(answer.studentAnswer)
+                                    }}
+                                    onError={(e) => {
+                                      const target = e.target as HTMLImageElement
+                                      target.style.display = 'none'
+                                      const errorDiv = document.createElement('div')
+                                      errorDiv.innerHTML = '<p class="text-sm text-red-500 italic">Image could not be loaded</p><p class="text-sm text-blue-600"><a href="' + answer.studentAnswer + '" target="_blank" rel="noopener noreferrer" class="underline">View original link</a></p>'
+                                      target.parentNode?.appendChild(errorDiv)
+                                    }}
+                                  />
+                                  <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                                    <Button
+                                      size="sm"
+                                      variant="secondary"
+                                      onClick={(e) => {
+                                        e.stopPropagation()
+                                        openImageInNewTab(answer.studentAnswer)
+                                      }}
+                                      className="mr-1"
+                                    >
+                                      <Maximize2 className="h-3 w-3" />
+                                    </Button>
+                                    <Button
+                                      size="sm"
+                                      variant="secondary"
+                                      onClick={(e) => {
+                                        e.stopPropagation()
+                                        downloadImage(answer.studentAnswer, `student_answer_${answer.questionId}`)
+                                      }}
+                                    >
+                                      <Download className="h-3 w-3" />
+                                    </Button>
+                                  </div>
+                                </div>
+                                <p className="text-xs text-muted-foreground">Click image to open in new tab • Hover to access controls</p>
+                              </div>
+                            )}
+                          </div>
+                        ) : (
+                          <p className="text-sm bg-gray-50 p-2 rounded">
+                            {answer.studentAnswer || "No answer provided"}
+                          </p>
+                        )}
                         {answer.hasCorrectAnswer && answer.correctAnswer && (
                           <div className="mt-2">
                             <p className="text-sm font-medium text-muted-foreground">Correct answer:</p>

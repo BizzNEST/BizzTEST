@@ -20,7 +20,7 @@ db.exec(`
   CREATE TABLE IF NOT EXISTS questions (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     quiz_id TEXT NOT NULL,
-    type TEXT NOT NULL CHECK (type IN ('multiple-choice-single', 'multiple-choice-multiple', 'true-false', 'short-answer')),
+    type TEXT NOT NULL CHECK (type IN ('multiple-choice-single', 'multiple-choice-multiple', 'true-false', 'short-answer', 'file-upload')),
     question TEXT NOT NULL,
     options TEXT, -- JSON string for multiple choice options
     correct_answer TEXT,
@@ -52,7 +52,7 @@ export interface Quiz {
 export interface Question {
   id: number
   quiz_id: string
-  type: 'multiple-choice-single' | 'multiple-choice-multiple' | 'true-false' | 'short-answer'
+  type: 'multiple-choice-single' | 'multiple-choice-multiple' | 'true-false' | 'short-answer' | 'file-upload'
   question: string
   options?: string[]
   correct_answer?: string
@@ -63,7 +63,7 @@ export interface Question {
 interface RawQuestion {
   id: number
   quiz_id: string
-  type: 'multiple-choice-single' | 'multiple-choice-multiple' | 'true-false' | 'short-answer'
+  type: 'multiple-choice-single' | 'multiple-choice-multiple' | 'true-false' | 'short-answer' | 'file-upload'
   question: string
   options?: string // JSON string in database
   correct_answer?: string
