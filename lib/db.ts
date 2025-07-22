@@ -1,0 +1,143 @@
+import Database from 'better-sqlite3'
+import path from 'path'
+
+const db = new Database(path.join(process.cwd(), 'database.db'))
+
+// Initialize database tables
+db.exec(`
+  CREATE TABLE IF NOT EXISTS quizzes (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    title TEXT NOT NULL,
+    description TEXT,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+  );
+
+  CREATE TABLE IF NOT EXISTS questions (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    quiz_id INTEGER NOT NULL,
+    type TEXT NOT NULL CHECK (type IN ('multiple-choice', 'true-false', 'short-answer')),
+    question TEXT NOT NULL,
+    options TEXT, -- JSON string for multiple choice options
+    correct_answer TEXT,
+    points INTEGER DEFAULT 1,
+    has_correct_answer BOOLEAN DEFAULT 1,
+    FOREIGN KEY (quiz_id) REFERENCES quizzes (id) ON DELETE CASCADE
+  );
+
+  CREATE TABLE IF NOT EXISTS submissions (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    quiz_id INTEGER NOT NULL,
+    student_name TEXT,
+    student_email TEXT,
+    answers TEXT, -- JSON string of answers
+    score INTEGER,
+    total_points INTEGER,
+    submitted_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (quiz_id) REFERENCES quizzes (id) ON DELETE CASCADE
+  );
+`)
+
+export interface Quiz {
+  id: number
+  title: string
+  description: string
+  created_at: string
+}
+
+export interface Question {
+  id: number
+  quiz_id: number
+  type: 'multiple-choice' | 'true-false' | 'short-answer'
+  question: string
+  options?: string[]
+  correct_answer?: string
+  points: number
+  has_correct_answer: boolean
+}
+
+export interface QuizWithQuestions extends Quiz {
+  questions: Question[]
+}
+
+// Quiz functions
+export const getQuizById = (id: number): QuizWithQuestions | null => {
+  const quiz = db.prepare('SELECT * FROM quizzes WHERE id = ?').get(id) as Quiz | undefined
+  if (!quiz) return null
+
+  const questions = db.prepare('SELECT * FROM questions WHERE quiz_id = ?').all(id) as Question[]
+  
+  // Parse options JSON
+  const parsedQuestions = questions.map(q => ({
+    ...q,
+    options: q.options ? JSON.parse(q.options) : undefined,
+    has_correct_answer: Boolean(q.has_correct_answer)
+  }))
+
+  return {
+    ...quiz,
+    questions: parsedQuestions
+  }
+}
+
+export const createQuiz = (title: string, description: string, questions: Omit<Question, 'id' | 'quiz_id'>[]): number => {
+  const insertQuiz = db.prepare('INSERT INTO quizzes (title, description) VALUES (?, ?)')
+  const insertQuestion = db.prepare(`
+    INSERT INTO questions (quiz_id, type, question, options, correct_answer, points, has_correct_answer) 
+    VALUES (?, ?, ?, ?, ?, ?, ?)
+  `)
+
+  const transaction = db.transaction(() => {
+    const result = insertQuiz.run(title, description)
+    const quizId = result.lastInsertRowid as number
+
+    for (const question of questions) {
+      insertQuestion.run(
+        quizId,
+        question.type,
+        question.question,
+        question.options ? JSON.stringify(question.options) : null,
+        question.correct_answer,
+        question.points,
+        question.has_correct_answer ? 1 : 0
+      )
+    }
+
+    return quizId
+  })
+
+  return transaction()
+}
+
+export const submitQuizAnswers = (quizId: number, studentName: string, studentEmail: string, answers: Record<string, string>): void => {
+  const quiz = getQuizById(quizId)
+  if (!quiz) throw new Error('Quiz not found')
+
+  let score = 0
+  let totalPoints = 0
+
+  quiz.questions.forEach(question => {
+    if (question.has_correct_answer) {
+      totalPoints += question.points
+      const userAnswer = answers[question.id.toString()]
+
+      if (question.type === 'short-answer') {
+        if (userAnswer?.toLowerCase().trim() === question.correct_answer?.toLowerCase()) {
+          score += question.points
+        }
+      } else {
+        if (userAnswer === question.correct_answer) {
+          score += question.points
+        }
+      }
+    }
+  })
+
+  const insertSubmission = db.prepare(`
+    INSERT INTO submissions (quiz_id, student_name, student_email, answers, score, total_points) 
+    VALUES (?, ?, ?, ?, ?, ?)
+  `)
+
+  insertSubmission.run(quizId, studentName, studentEmail, JSON.stringify(answers), score, totalPoints)
+}
+
+export default db 

@@ -1,79 +1,65 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
+import { useParams } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Label } from "@/components/ui/label"
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
 import { Textarea } from "@/components/ui/textarea"
 import { Badge } from "@/components/ui/badge"
-import { CheckCircle, XCircle, Clock, Award } from "lucide-react"
+import { CheckCircle, XCircle, Clock, Award, Loader2 } from "lucide-react"
 
-interface TestQuestion {
-  id: string
+interface Question {
+  id: number
   type: "multiple-choice" | "true-false" | "short-answer"
   question: string
   options?: string[]
-  correctAnswer?: string
+  correct_answer?: string
   points: number
-  hasCorrectAnswer: boolean
+  has_correct_answer: boolean
 }
 
-const testQuestions: TestQuestion[] = [
-  {
-    id: "1",
-    type: "multiple-choice",
-    question: "What is the capital of France?",
-    options: ["London", "Berlin", "Paris", "Madrid"],
-    correctAnswer: "2", // Paris
-    points: 2,
-    hasCorrectAnswer: true,
-  },
-  {
-    id: "2",
-    type: "true-false",
-    question: "The Earth is flat.",
-    correctAnswer: "false",
-    points: 1,
-    hasCorrectAnswer: true,
-  },
-  {
-    id: "3",
-    type: "short-answer",
-    question: "What is 2 + 2?",
-    correctAnswer: "4",
-    points: 1,
-    hasCorrectAnswer: true,
-  },
-  {
-    id: "4",
-    type: "multiple-choice",
-    question: "What is your favorite programming language? (Open-ended)",
-    options: ["JavaScript", "Python", "Java", "C++", "Other"],
-    points: 1,
-    hasCorrectAnswer: false,
-  },
-  {
-    id: "5",
-    type: "true-false",
-    question: "Do you enjoy learning new technologies? (Open-ended)",
-    points: 1,
-    hasCorrectAnswer: false,
-  },
-  {
-    id: "6",
-    type: "short-answer",
-    question: "Describe your ideal work environment in a few words. (Open-ended)",
-    points: 2,
-    hasCorrectAnswer: false,
-  },
-]
+interface Quiz {
+  id: number
+  title: string
+  description: string
+  questions: Question[]
+}
 
-export default function TestQuiz() {
+export default function QuizPage() {
+  const params = useParams()
+  const quizId = params.id as string
+
+  const [quiz, setQuiz] = useState<Quiz | null>(null)
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
   const [answers, setAnswers] = useState<Record<string, string>>({})
   const [submitted, setSubmitted] = useState(false)
   const [currentQuestion, setCurrentQuestion] = useState(0)
   const [showWarning, setShowWarning] = useState(false)
+  const [submitting, setSubmitting] = useState(false)
+
+  useEffect(() => {
+    const fetchQuiz = async () => {
+      try {
+        const response = await fetch(`/api/quiz/${quizId}`)
+        if (!response.ok) {
+          throw new Error('Quiz not found')
+        }
+        const quizData = await response.json()
+        setQuiz(quizData)
+      } catch (err) {
+        setError(err instanceof Error ? err.message : 'Failed to load quiz')
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    if (quizId) {
+      fetchQuiz()
+    }
+  }, [quizId])
 
   const handleAnswerChange = (questionId: string, answer: string) => {
     setAnswers((prev) => ({
@@ -83,23 +69,24 @@ export default function TestQuiz() {
   }
 
   const calculateScore = () => {
+    if (!quiz) return { correctAnswers: 0, totalGradableQuestions: 0, earnedPoints: 0, totalGradablePoints: 0, percentage: 0 }
+
     let correctAnswers = 0
     let totalGradablePoints = 0
     let earnedPoints = 0
 
-    testQuestions.forEach((question) => {
-      if (question.hasCorrectAnswer) {
+    quiz.questions.forEach((question) => {
+      if (question.has_correct_answer) {
         totalGradablePoints += question.points
-        const userAnswer = answers[question.id]
+        const userAnswer = answers[question.id.toString()]
 
         if (question.type === "short-answer") {
-          // Case-insensitive comparison for short answers
-          if (userAnswer?.toLowerCase().trim() === question.correctAnswer?.toLowerCase()) {
+          if (userAnswer?.toLowerCase().trim() === question.correct_answer?.toLowerCase()) {
             correctAnswers++
             earnedPoints += question.points
           }
         } else {
-          if (userAnswer === question.correctAnswer) {
+          if (userAnswer === question.correct_answer) {
             correctAnswers++
             earnedPoints += question.points
           }
@@ -109,44 +96,116 @@ export default function TestQuiz() {
 
     return {
       correctAnswers,
-      totalGradableQuestions: testQuestions.filter((q) => q.hasCorrectAnswer).length,
+      totalGradableQuestions: quiz.questions.filter((q) => q.has_correct_answer).length,
       earnedPoints,
       totalGradablePoints,
       percentage: totalGradablePoints > 0 ? Math.round((earnedPoints / totalGradablePoints) * 100) : 0,
     }
   }
 
-  const handleSubmit = () => {
-    const unansweredQuestions = testQuestions.filter((q) => !isAnswered(q.id))
+  const handleSubmit = async () => {
+    if (!quiz) return
+
+    const unansweredQuestions = quiz.questions.filter((q) => !isAnswered(q.id.toString()))
 
     if (unansweredQuestions.length > 0) {
       setShowWarning(true)
       return
     }
 
-    setSubmitted(true)
+    await submitQuiz()
+  }
+
+  const submitQuiz = async () => {
+    if (!quiz) return
+
+    setSubmitting(true)
+    try {
+      const response = await fetch(`/api/quiz/${quizId}/submit`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          studentName: 'Anonymous',
+          studentEmail: '',
+          answers: answers,
+        }),
+      })
+
+      if (!response.ok) {
+        throw new Error('Failed to submit quiz')
+      }
+
+      setSubmitted(true)
+    } catch (err) {
+      setError('Failed to submit quiz')
+    } finally {
+      setSubmitting(false)
+    }
   }
 
   const handleSubmitAnyway = () => {
     setShowWarning(false)
-    setSubmitted(true)
+    submitQuiz()
   }
 
   const isAnswered = (questionId: string) => {
     return answers[questionId] && answers[questionId].trim() !== ""
   }
 
-  const getAnswerStatus = (question: TestQuestion) => {
-    if (!question.hasCorrectAnswer) return "open-ended"
+  const getAnswerStatus = (question: Question) => {
+    if (!question.has_correct_answer) return "open-ended"
 
-    const userAnswer = answers[question.id]
+    const userAnswer = answers[question.id.toString()]
     if (!userAnswer) return "unanswered"
 
     if (question.type === "short-answer") {
-      return userAnswer.toLowerCase().trim() === question.correctAnswer?.toLowerCase() ? "correct" : "incorrect"
+      return userAnswer.toLowerCase().trim() === question.correct_answer?.toLowerCase() ? "correct" : "incorrect"
     }
 
-    return userAnswer === question.correctAnswer ? "correct" : "incorrect"
+    return userAnswer === question.correct_answer ? "correct" : "incorrect"
+  }
+
+  if (loading) {
+    return (
+      <div className="max-w-4xl mx-auto p-6 flex items-center justify-center min-h-[50vh]">
+        <div className="text-center">
+          <Loader2 className="h-8 w-8 animate-spin mx-auto mb-4" />
+          <p>Loading quiz...</p>
+        </div>
+      </div>
+    )
+  }
+
+  if (error) {
+    return (
+      <div className="max-w-4xl mx-auto p-6">
+        <Card>
+          <CardContent className="pt-6">
+            <div className="text-center">
+              <XCircle className="h-12 w-12 text-red-500 mx-auto mb-4" />
+              <h2 className="text-2xl font-semibold mb-2">Error</h2>
+              <p className="text-muted-foreground">{error}</p>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    )
+  }
+
+  if (!quiz) {
+    return (
+      <div className="max-w-4xl mx-auto p-6">
+        <Card>
+          <CardContent className="pt-6">
+            <div className="text-center">
+              <p>Quiz not found</p>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    )
   }
 
   if (submitted) {
@@ -160,7 +219,7 @@ export default function TestQuiz() {
               <Award className="h-16 w-16 text-yellow-500" />
             </div>
             <CardTitle className="text-3xl">Quiz Complete!</CardTitle>
-            <CardDescription>Here are your results</CardDescription>
+            <CardDescription>Here are your results for "{quiz.title}"</CardDescription>
           </CardHeader>
           <CardContent>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6 text-center">
@@ -186,9 +245,9 @@ export default function TestQuiz() {
 
         <div className="space-y-4">
           <h2 className="text-2xl font-semibold">Review Your Answers</h2>
-          {testQuestions.map((question, index) => {
+          {quiz.questions.map((question, index) => {
             const status = getAnswerStatus(question)
-            const userAnswer = answers[question.id] || "No answer provided"
+            const userAnswer = answers[question.id.toString()] || "No answer provided"
 
             return (
               <Card key={question.id} className="relative">
@@ -214,18 +273,18 @@ export default function TestQuiz() {
                     </p>
                   </div>
 
-                  {question.hasCorrectAnswer && (
+                  {question.has_correct_answer && (
                     <div>
                       <Label className="text-sm font-medium text-green-700">Correct Answer:</Label>
                       <p className="text-sm bg-green-50 p-2 rounded mt-1">
                         {question.type === "multiple-choice" && question.options
-                          ? question.options[Number.parseInt(question.correctAnswer!)]
-                          : question.correctAnswer}
+                          ? question.options[Number.parseInt(question.correct_answer!)]
+                          : question.correct_answer}
                       </p>
                     </div>
                   )}
 
-                  {!question.hasCorrectAnswer && (
+                  {!question.has_correct_answer && (
                     <p className="text-sm text-blue-600 italic">
                       This is an open-ended question - no automatic grading applied.
                     </p>
@@ -245,18 +304,21 @@ export default function TestQuiz() {
     )
   }
 
-  const question = testQuestions[currentQuestion]
-  const progress = ((currentQuestion + 1) / testQuestions.length) * 100
+  const question = quiz.questions[currentQuestion]
+  const progress = ((currentQuestion + 1) / quiz.questions.length) * 100
 
   return (
     <div className="max-w-3xl mx-auto p-6">
       <div className="mb-6">
         <div className="flex items-center justify-between mb-2">
-          <h1 className="text-2xl font-bold">Test Quiz</h1>
+          <h1 className="text-2xl font-bold">{quiz.title}</h1>
           <Badge variant="outline">
-            Question {currentQuestion + 1} of {testQuestions.length}
+            Question {currentQuestion + 1} of {quiz.questions.length}
           </Badge>
         </div>
+        {quiz.description && (
+          <p className="text-muted-foreground mb-4">{quiz.description}</p>
+        )}
         <div className="w-full bg-gray-200 rounded-full h-2">
           <div className="bg-blue-600 h-2 rounded-full transition-all duration-300" style={{ width: `${progress}%` }} />
         </div>
@@ -268,7 +330,7 @@ export default function TestQuiz() {
             <CardTitle className="text-xl">Question {currentQuestion + 1}</CardTitle>
             <div className="flex items-center gap-2">
               <Badge variant="outline">{question.points} points</Badge>
-              {!question.hasCorrectAnswer && <Badge variant="secondary">Open-ended</Badge>}
+              {!question.has_correct_answer && <Badge variant="secondary">Open-ended</Badge>}
             </div>
           </div>
           <CardDescription className="text-base text-foreground">{question.question}</CardDescription>
@@ -276,8 +338,8 @@ export default function TestQuiz() {
         <CardContent className="space-y-4">
           {question.type === "multiple-choice" && (
             <RadioGroup
-              value={answers[question.id] || ""}
-              onValueChange={(value) => handleAnswerChange(question.id, value)}
+              value={answers[question.id.toString()] || ""}
+              onValueChange={(value) => handleAnswerChange(question.id.toString(), value)}
             >
               {question.options?.map((option, index) => (
                 <div key={index} className="flex items-center space-x-2">
@@ -292,8 +354,8 @@ export default function TestQuiz() {
 
           {question.type === "true-false" && (
             <RadioGroup
-              value={answers[question.id] || ""}
-              onValueChange={(value) => handleAnswerChange(question.id, value)}
+              value={answers[question.id.toString()] || ""}
+              onValueChange={(value) => handleAnswerChange(question.id.toString(), value)}
             >
               <div className="flex items-center space-x-2">
                 <RadioGroupItem value="true" id="true" />
@@ -314,8 +376,8 @@ export default function TestQuiz() {
             <div>
               <Textarea
                 placeholder="Enter your answer here..."
-                value={answers[question.id] || ""}
-                onChange={(e) => handleAnswerChange(question.id, e.target.value)}
+                value={answers[question.id.toString()] || ""}
+                onChange={(e) => handleAnswerChange(question.id.toString(), e.target.value)}
                 className="min-h-[100px]"
               />
             </div>
@@ -332,12 +394,17 @@ export default function TestQuiz() {
           Previous
         </Button>
 
-        {currentQuestion === testQuestions.length - 1 ? (
-          <Button onClick={handleSubmit} className="bg-green-600 hover:bg-green-700">
+        {currentQuestion === quiz.questions.length - 1 ? (
+          <Button 
+            onClick={handleSubmit} 
+            className="bg-green-600 hover:bg-green-700"
+            disabled={submitting}
+          >
+            {submitting ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
             Submit Quiz
           </Button>
         ) : (
-          <Button onClick={() => setCurrentQuestion((prev) => Math.min(testQuestions.length - 1, prev + 1))}>
+          <Button onClick={() => setCurrentQuestion((prev) => Math.min(quiz.questions.length - 1, prev + 1))}>
             Next
           </Button>
         )}
@@ -346,13 +413,13 @@ export default function TestQuiz() {
       <div className="mt-6 p-4 bg-gray-50 rounded-lg">
         <h3 className="font-medium mb-2">Progress Overview</h3>
         <div className="grid grid-cols-6 gap-2">
-          {testQuestions.map((_, index) => (
+          {quiz.questions.map((_, index) => (
             <div
               key={index}
               className={`h-8 rounded flex items-center justify-center text-sm font-medium cursor-pointer transition-colors ${
                 index === currentQuestion
                   ? "bg-blue-600 text-white"
-                  : isAnswered(testQuestions[index].id)
+                  : isAnswered(quiz.questions[index].id.toString())
                     ? "bg-green-100 text-green-800"
                     : "bg-gray-200 text-gray-600"
               }`}
@@ -364,6 +431,7 @@ export default function TestQuiz() {
         </div>
         <p className="text-xs text-muted-foreground mt-2">Click on a number to jump to that question</p>
       </div>
+
       {showWarning && (
         <Card className="mt-6 border-orange-200 bg-orange-50">
           <CardContent className="pt-6">
@@ -381,14 +449,14 @@ export default function TestQuiz() {
                 <h3 className="text-sm font-medium text-orange-800">Incomplete Quiz</h3>
                 <div className="mt-2 text-sm text-orange-700">
                   <p>
-                    You have {testQuestions.filter((q) => !isAnswered(q.id)).length} unanswered questions. Are you sure
+                    You have {quiz.questions.filter((q) => !isAnswered(q.id.toString())).length} unanswered questions. Are you sure
                     you want to submit?
                   </p>
                   <ul className="mt-2 list-disc list-inside">
-                    {testQuestions
-                      .filter((q) => !isAnswered(q.id))
+                    {quiz.questions
+                      .filter((q) => !isAnswered(q.id.toString()))
                       .map((q, index) => (
-                        <li key={q.id}>Question {testQuestions.indexOf(q) + 1}</li>
+                        <li key={q.id}>Question {quiz.questions.indexOf(q) + 1}</li>
                       ))}
                   </ul>
                 </div>
@@ -396,7 +464,13 @@ export default function TestQuiz() {
                   <Button size="sm" variant="outline" onClick={() => setShowWarning(false)}>
                     Continue Answering
                   </Button>
-                  <Button size="sm" onClick={handleSubmitAnyway} className="bg-orange-600 hover:bg-orange-700">
+                  <Button 
+                    size="sm" 
+                    onClick={handleSubmitAnyway} 
+                    className="bg-orange-600 hover:bg-orange-700"
+                    disabled={submitting}
+                  >
+                    {submitting ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
                     Submit Anyway
                   </Button>
                 </div>
@@ -407,4 +481,4 @@ export default function TestQuiz() {
       )}
     </div>
   )
-}
+} 

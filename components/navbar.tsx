@@ -23,8 +23,8 @@ export function Navbar() {
                 Create Quiz
               </Button>
             </Link>
-            <Link href="/test-quiz">
-              <Button variant="ghost">Take Test Quiz</Button>
+            <Link href="/quiz/1">
+              <Button variant="ghost">Take Sample Quiz</Button>
             </Link>
             <Link href="/results">
               <Button>
