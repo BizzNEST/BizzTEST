@@ -104,13 +104,7 @@ export default function QuizzesPage() {
           <CardContent className="p-8 text-center">
             <BookOpen className="h-16 w-16 text-muted-foreground mx-auto mb-4" />
             <h3 className="text-lg font-semibold mb-2">No quizzes yet</h3>
-            <p className="text-muted-foreground mb-4">Create your first quiz to get started</p>
-            <Link href="/create">
-              <Button>
-                <Plus className="h-4 w-4 mr-2" />
-                Create Quiz
-              </Button>
-            </Link>
+            <p className="text-muted-foreground mb-4">Come back later!</p>
           </CardContent>
         </Card>
       ) : (
