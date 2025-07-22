@@ -1,6 +1,7 @@
 "use client"
 
 import { useState } from "react"
+import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
@@ -9,7 +10,7 @@ import { Textarea } from "@/components/ui/textarea"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
 import { Badge } from "@/components/ui/badge"
-import { Plus, Trash2, GripVertical } from "lucide-react"
+import { Plus, Trash2, GripVertical, Loader2 } from "lucide-react"
 
 type QuestionType = "multiple-choice" | "true-false" | "short-answer"
 
@@ -29,11 +30,14 @@ interface Quiz {
 }
 
 export default function Component() {
+  const router = useRouter()
   const [quiz, setQuiz] = useState<Quiz>({
     name: "",
     description: "",
     questions: [],
   })
+  const [isCreating, setIsCreating] = useState(false)
+  const [error, setError] = useState<string | null>(null)
 
   const addQuestion = () => {
     const newQuestion: Question = {
@@ -102,6 +106,66 @@ export default function Component() {
     if (question && question.options && question.options.length > 2) {
       const newOptions = question.options.filter((_, index) => index !== optionIndex)
       updateQuestion(questionId, { options: newOptions })
+    }
+  }
+
+  const validateQuiz = (): string | null => {
+    if (!quiz.name.trim()) {
+      return "Quiz name is required"
+    }
+    if (quiz.questions.length === 0) {
+      return "At least one question is required"
+    }
+    for (let i = 0; i < quiz.questions.length; i++) {
+      const question = quiz.questions[i]
+      if (!question.question.trim()) {
+        return `Question ${i + 1} text is required`
+      }
+      if (question.type === "multiple-choice") {
+        if (!question.options || question.options.filter(opt => opt.trim()).length < 2) {
+          return `Question ${i + 1} must have at least 2 non-empty options`
+        }
+        if (!question.correctAnswer || question.correctAnswer === "") {
+          return `Question ${i + 1} must have a correct answer selected`
+        }
+      }
+      if (question.type === "true-false" && (!question.correctAnswer || question.correctAnswer === "")) {
+        return `Question ${i + 1} must have a correct answer selected`
+      }
+    }
+    return null
+  }
+
+  const publishQuiz = async () => {
+    const validationError = validateQuiz()
+    if (validationError) {
+      setError(validationError)
+      return
+    }
+
+    setIsCreating(true)
+    setError(null)
+
+    try {
+      const response = await fetch('/api/quiz', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(quiz),
+      })
+
+      if (!response.ok) {
+        const errorData = await response.json()
+        throw new Error(errorData.error || 'Failed to create quiz')
+      }
+
+      const result = await response.json()
+      router.push(`/quiz/${result.id}`)
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to create quiz')
+    } finally {
+      setIsCreating(false)
     }
   }
 
@@ -181,7 +245,7 @@ export default function Component() {
               </div>
               <RadioGroup
                 value={question.correctAnswer as string}
-                onValueChange={(value) => updateQuestion(question.id, { correctAnswer: value })}
+                onValueChange={(value: any) => updateQuestion(question.id, { correctAnswer: value })}
               >
                 {question.options?.map((option, optionIndex) => (
                   <div key={optionIndex} className="flex items-center gap-2">
@@ -215,7 +279,7 @@ export default function Component() {
               <Label>Correct Answer</Label>
               <RadioGroup
                 value={question.correctAnswer as string}
-                onValueChange={(value) => updateQuestion(question.id, { correctAnswer: value })}
+                onValueChange={(value: any) => updateQuestion(question.id, { correctAnswer: value })}
               >
                 <div className="flex items-center space-x-2">
                   <RadioGroupItem value="true" id={`${question.id}-true`} />
@@ -255,10 +319,28 @@ export default function Component() {
           <h1 className="text-3xl font-bold">Create Quiz</h1>
           <p className="text-muted-foreground">Design your quiz with multiple question types</p>
         </div>
-        <Button size="lg" className="bg-green-600 hover:bg-green-700">
-          Publish Quiz
+        <Button 
+          size="lg" 
+          className="bg-green-600 hover:bg-green-700"
+          onClick={publishQuiz}
+          disabled={isCreating}
+        >
+          {isCreating ? (
+            <>
+              <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+              Creating...
+            </>
+          ) : (
+            "Publish Quiz"
+          )}
         </Button>
       </div>
+
+      {error && (
+        <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded">
+          {error}
+        </div>
+      )}
 
       <Card>
         <CardHeader>
@@ -321,8 +403,20 @@ export default function Component() {
 
       {quiz.questions.length > 0 && (
         <div className="flex justify-end pt-6 border-t">
-          <Button size="lg" className="bg-green-600 hover:bg-green-700">
-            Publish Quiz
+          <Button 
+            size="lg" 
+            className="bg-green-600 hover:bg-green-700"
+            onClick={publishQuiz}
+            disabled={isCreating}
+          >
+            {isCreating ? (
+              <>
+                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                Creating...
+              </>
+            ) : (
+              "Publish Quiz"
+            )}
           </Button>
         </div>
       )}

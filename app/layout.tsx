@@ -7,7 +7,7 @@ import { Navbar } from "../components/navbar"
 const inter = Inter({ subsets: ["latin"] })
 
 export const metadata: Metadata = {
-  title: "QuizMaster - Create and Take Quizzes",
+  title: "BizzTEST - Create and Take Quizzes",
   description: "A comprehensive quiz creation and taking platform",
     generator: 'v0.dev'
 }

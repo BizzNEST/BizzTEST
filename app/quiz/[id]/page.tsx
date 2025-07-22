@@ -7,8 +7,9 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Label } from "@/components/ui/label"
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
 import { Textarea } from "@/components/ui/textarea"
+import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
-import { CheckCircle, XCircle, Clock, Award, Loader2 } from "lucide-react"
+import { CheckCircle, XCircle, Clock, Award, Loader2, User } from "lucide-react"
 
 interface Question {
   id: number
@@ -21,7 +22,7 @@ interface Question {
 }
 
 interface Quiz {
-  id: number
+  id: string
   title: string
   description: string
   questions: Question[]
@@ -39,6 +40,9 @@ export default function QuizPage() {
   const [currentQuestion, setCurrentQuestion] = useState(0)
   const [showWarning, setShowWarning] = useState(false)
   const [submitting, setSubmitting] = useState(false)
+  const [studentName, setStudentName] = useState("")
+  const [studentEmail, setStudentEmail] = useState("")
+  const [quizStarted, setQuizStarted] = useState(false)
 
   useEffect(() => {
     const fetchQuiz = async () => {
@@ -66,6 +70,13 @@ export default function QuizPage() {
       ...prev,
       [questionId]: answer,
     }))
+  }
+
+  const handleStartQuiz = () => {
+    if (studentName.trim() === "") {
+      return
+    }
+    setQuizStarted(true)
   }
 
   const calculateScore = () => {
@@ -127,8 +138,8 @@ export default function QuizPage() {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          studentName: 'Anonymous',
-          studentEmail: '',
+          studentName: studentName,
+          studentEmail: studentEmail,
           answers: answers,
         }),
       })
@@ -201,6 +212,59 @@ export default function QuizPage() {
           <CardContent className="pt-6">
             <div className="text-center">
               <p>Quiz not found</p>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    )
+  }
+
+  if (!quizStarted) {
+    return (
+      <div className="max-w-4xl mx-auto p-6">
+        <Card className="mb-6">
+          <CardHeader className="text-center">
+            <div className="flex justify-center mb-4">
+              <User className="h-16 w-16 text-blue-500" />
+            </div>
+            <CardTitle className="text-3xl">Welcome to "{quiz.title}"</CardTitle>
+            <CardDescription>{quiz.description}</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-4">
+              <div>
+                <Label htmlFor="studentName" className="text-sm font-medium">
+                  Your Name *
+                </Label>
+                <Input
+                  id="studentName"
+                  value={studentName}
+                  onChange={(e) => setStudentName(e.target.value)}
+                  placeholder="Enter your name"
+                  className="mt-1"
+                  required
+                />
+              </div>
+              <div>
+                <Label htmlFor="studentEmail" className="text-sm font-medium">
+                  Your Email (optional)
+                </Label>
+                <Input
+                  id="studentEmail"
+                  type="email"
+                  value={studentEmail}
+                  onChange={(e) => setStudentEmail(e.target.value)}
+                  placeholder="Enter your email"
+                  className="mt-1"
+                />
+              </div>
+              <Button 
+                onClick={handleStartQuiz} 
+                className="w-full"
+                disabled={studentName.trim() === ""}
+              >
+                Start Quiz
+              </Button>
             </div>
           </CardContent>
         </Card>

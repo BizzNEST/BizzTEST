@@ -3,10 +3,15 @@ import path from 'path'
 
 const db = new Database(path.join(process.cwd(), 'database.db'))
 
+// Function to generate random quiz ID
+const generateQuizId = (): string => {
+  return Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15)
+}
+
 // Initialize database tables
 db.exec(`
   CREATE TABLE IF NOT EXISTS quizzes (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    id TEXT PRIMARY KEY,
     title TEXT NOT NULL,
     description TEXT,
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP
@@ -14,7 +19,7 @@ db.exec(`
 
   CREATE TABLE IF NOT EXISTS questions (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
-    quiz_id INTEGER NOT NULL,
+    quiz_id TEXT NOT NULL,
     type TEXT NOT NULL CHECK (type IN ('multiple-choice', 'true-false', 'short-answer')),
     question TEXT NOT NULL,
     options TEXT, -- JSON string for multiple choice options
@@ -26,7 +31,7 @@ db.exec(`
 
   CREATE TABLE IF NOT EXISTS submissions (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
-    quiz_id INTEGER NOT NULL,
+    quiz_id TEXT NOT NULL,
     student_name TEXT,
     student_email TEXT,
     answers TEXT, -- JSON string of answers
@@ -38,7 +43,7 @@ db.exec(`
 `)
 
 export interface Quiz {
-  id: number
+  id: string
   title: string
   description: string
   created_at: string
@@ -46,7 +51,7 @@ export interface Quiz {
 
 export interface Question {
   id: number
-  quiz_id: number
+  quiz_id: string
   type: 'multiple-choice' | 'true-false' | 'short-answer'
   question: string
   options?: string[]
@@ -60,7 +65,7 @@ export interface QuizWithQuestions extends Quiz {
 }
 
 // Quiz functions
-export const getQuizById = (id: number): QuizWithQuestions | null => {
+export const getQuizById = (id: string): QuizWithQuestions | null => {
   const quiz = db.prepare('SELECT * FROM quizzes WHERE id = ?').get(id) as Quiz | undefined
   if (!quiz) return null
 
@@ -79,16 +84,16 @@ export const getQuizById = (id: number): QuizWithQuestions | null => {
   }
 }
 
-export const createQuiz = (title: string, description: string, questions: Omit<Question, 'id' | 'quiz_id'>[]): number => {
-  const insertQuiz = db.prepare('INSERT INTO quizzes (title, description) VALUES (?, ?)')
+export const createQuiz = (title: string, description: string, questions: Omit<Question, 'id' | 'quiz_id'>[]): string => {
+  const quizId = generateQuizId()
+  const insertQuiz = db.prepare('INSERT INTO quizzes (id, title, description) VALUES (?, ?, ?)')
   const insertQuestion = db.prepare(`
     INSERT INTO questions (quiz_id, type, question, options, correct_answer, points, has_correct_answer) 
     VALUES (?, ?, ?, ?, ?, ?, ?)
   `)
 
   const transaction = db.transaction(() => {
-    const result = insertQuiz.run(title, description)
-    const quizId = result.lastInsertRowid as number
+    insertQuiz.run(quizId, title, description)
 
     for (const question of questions) {
       insertQuestion.run(
@@ -108,7 +113,7 @@ export const createQuiz = (title: string, description: string, questions: Omit<Q
   return transaction()
 }
 
-export const submitQuizAnswers = (quizId: number, studentName: string, studentEmail: string, answers: Record<string, string>): void => {
+export const submitQuizAnswers = (quizId: string, studentName: string, studentEmail: string, answers: Record<string, string>): void => {
   const quiz = getQuizById(quizId)
   if (!quiz) throw new Error('Quiz not found')
 
@@ -138,6 +143,27 @@ export const submitQuizAnswers = (quizId: number, studentName: string, studentEm
   `)
 
   insertSubmission.run(quizId, studentName, studentEmail, JSON.stringify(answers), score, totalPoints)
+}
+
+export interface Submission {
+  id: number
+  quiz_id: string
+  student_name: string
+  student_email: string
+  answers: string
+  score: number
+  total_points: number
+  submitted_at: string
+}
+
+export const getAllSubmissions = (): Submission[] => {
+  const submissions = db.prepare('SELECT * FROM submissions ORDER BY submitted_at DESC').all() as Submission[]
+  return submissions
+}
+
+export const getSubmissionsByQuizId = (quizId: string): Submission[] => {
+  const submissions = db.prepare('SELECT * FROM submissions WHERE quiz_id = ? ORDER BY submitted_at DESC').all(quizId) as Submission[]
+  return submissions
 }
 
 export default db 

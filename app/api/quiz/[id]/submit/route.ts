@@ -3,12 +3,13 @@ import { submitQuizAnswers } from '@/lib/db'
 
 export async function POST(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const quizId = parseInt(params.id)
+    const { id } = await params
+    const quizId = id
     
-    if (isNaN(quizId)) {
+    if (!quizId || quizId.trim() === '') {
       return NextResponse.json({ error: 'Invalid quiz ID' }, { status: 400 })
     }
 
