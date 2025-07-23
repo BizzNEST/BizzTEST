@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { writeFileSync } from 'fs'
+import { writeFileSync, mkdirSync, existsSync } from 'fs'
 import { join } from 'path'
 
 export async function POST(request: NextRequest) {
@@ -26,11 +26,17 @@ export async function POST(request: NextRequest) {
     const originalName = file.name.replace(/[^a-zA-Z0-9.-]/g, '_') // Sanitize filename
     const filename = `${timestamp}_${originalName}`
 
+    // Ensure upload directory exists
+    const uploadDir = join(process.cwd(), 'public', 'uploads')
+    if (!existsSync(uploadDir)) {
+      mkdirSync(uploadDir, { recursive: true })
+    }
+
     // Convert file to buffer and save
     const bytes = await file.arrayBuffer()
     const buffer = Buffer.from(bytes)
 
-    const uploadPath = join(process.cwd(), 'public', 'uploads', filename)
+    const uploadPath = join(uploadDir, filename)
     writeFileSync(uploadPath, buffer)
 
     // Return the file URL
@@ -46,6 +52,9 @@ export async function POST(request: NextRequest) {
     })
   } catch (error) {
     console.error('Error uploading file:', error)
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
+    return NextResponse.json({ 
+      error: 'Internal server error', 
+      details: error instanceof Error ? error.message : 'Unknown error'
+    }, { status: 500 })
   }
 } 
