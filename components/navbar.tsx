@@ -20,6 +20,13 @@ export function Navbar() {
           </div>
 
           <div className="flex items-center space-x-4">
+            <Link href="/quizzes">
+              <Button variant="ghost">
+                <List className="h-4 w-4 mr-2" />
+                All Quizzes
+              </Button>
+            </Link>
+
             {isAuthenticated && (
               <>
                 <Link href="/create-quiz">
@@ -36,13 +43,6 @@ export function Navbar() {
                 </Link>
               </>
             )}
-            
-            <Link href="/quizzes">
-              <Button variant="ghost">
-                <List className="h-4 w-4 mr-2" />
-                All Quizzes
-              </Button>
-            </Link>
 
             {isAuthenticated ? (
               <Button onClick={logout} variant="outline">

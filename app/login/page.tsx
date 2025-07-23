@@ -28,7 +28,7 @@ export default function LoginPage() {
 
     if (username === "admin" && password === "BizzTEST") {
       login()
-      router.push("/create-quiz")
+      router.push("/quizzes")
     } else {
       setError("Invalid username or password")
     }

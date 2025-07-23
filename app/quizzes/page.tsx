@@ -175,7 +175,7 @@ export default function QuizzesPage() {
                 {isAuthenticated && (
                   <div className="flex items-center gap-2 mt-4">
                     <Badge variant="outline" className="text-xs">
-                      Created {formatDate(quiz.created_at)}
+                      Created by you on {formatDate(quiz.created_at)}
                     </Badge>
                   </div>
                 )}
