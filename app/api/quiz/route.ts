@@ -30,7 +30,7 @@ export async function POST(request: NextRequest) {
          !(Array.isArray(q.correctAnswer) && q.correctAnswer.length === 0))
     }))
 
-    const quizId = createQuiz(name, description || '', dbQuestions)
+    const quizId = await createQuiz(name, description || '', dbQuestions)
 
     return NextResponse.json({ id: quizId, message: 'Quiz created successfully' })
   } catch (error) {

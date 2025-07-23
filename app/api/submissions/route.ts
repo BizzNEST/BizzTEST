@@ -3,11 +3,11 @@ import { getAllSubmissions, getQuizById } from '@/lib/db'
 
 export async function GET() {
   try {
-    const submissions = getAllSubmissions()
+    const submissions = await getAllSubmissions()
     
     // Enrich submissions with quiz data and parse answers
-    const enrichedSubmissions = submissions.map(submission => {
-      const quiz = getQuizById(submission.quiz_id)
+    const enrichedSubmissions = await Promise.all(submissions.map(async (submission) => {
+      const quiz = await getQuizById(submission.quiz_id)
       const parsedAnswers = JSON.parse(submission.answers)
       
       return {
@@ -25,7 +25,7 @@ export async function GET() {
         answers: parsedAnswers,
         quiz: quiz
       }
-    })
+    }))
 
     return NextResponse.json(enrichedSubmissions)
   } catch (error) {

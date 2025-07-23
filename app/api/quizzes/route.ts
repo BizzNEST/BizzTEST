@@ -1,9 +1,12 @@
 import { NextResponse } from 'next/server'
 import db from '@/lib/db'
+import { promisify } from 'util'
+
+const dbAll = promisify(db.all.bind(db)) as (sql: string, params?: any[]) => Promise<any[]>
 
 export async function GET() {
   try {
-    const quizzes = db.prepare('SELECT * FROM quizzes ORDER BY created_at DESC').all()
+    const quizzes = await dbAll('SELECT * FROM quizzes ORDER BY created_at DESC')
     
     return NextResponse.json(quizzes)
   } catch (error) {

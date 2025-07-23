@@ -845,3 +845,4 @@ const quizId3 = createQuiz(
 
 console.log(`Created bizzNEST Design quiz with ID: ${quizId1}`)
 console.log(`Created bizzNEST Video quiz with ID: ${quizId2}`)
+console.log(`Created bizzNEST Marketing quiz with ID: ${quizId3}`)

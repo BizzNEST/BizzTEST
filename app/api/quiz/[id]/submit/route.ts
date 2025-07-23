@@ -20,7 +20,7 @@ export async function POST(
       return NextResponse.json({ error: 'Missing required fields' }, { status: 400 })
     }
 
-    submitQuizAnswers(quizId, studentName, studentEmail || '', answers)
+    await submitQuizAnswers(quizId, studentName, studentEmail || '', answers)
 
     return NextResponse.json({ success: true, message: 'Quiz submitted successfully' })
   } catch (error) {

@@ -1,7 +1,18 @@
-import Database from 'better-sqlite3'
+import sqlite3 from 'sqlite3'
 import path from 'path'
+import { promisify } from 'util'
 
-const db = new Database(path.join(process.cwd(), 'database.db'))
+// Enable verbose mode for debugging
+const Database = sqlite3.verbose().Database
+
+// Create database connection
+const dbPath = path.join(process.cwd(), 'database.db')
+const db = new Database(dbPath)
+
+// Promisify database methods for easier async/await usage
+const dbRun = promisify(db.run.bind(db)) as (sql: string, params?: any[]) => Promise<void>
+const dbGet = promisify(db.get.bind(db)) as (sql: string, params?: any[]) => Promise<any>
+const dbAll = promisify(db.all.bind(db)) as (sql: string, params?: any[]) => Promise<any[]>
 
 // Function to generate random quiz ID
 const generateQuizId = (): string => {
@@ -9,38 +20,47 @@ const generateQuizId = (): string => {
 }
 
 // Initialize database tables
-db.exec(`
-  CREATE TABLE IF NOT EXISTS quizzes (
-    id TEXT PRIMARY KEY,
-    title TEXT NOT NULL,
-    description TEXT,
-    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
-  );
+const initializeDatabase = async () => {
+  await dbRun(`
+    CREATE TABLE IF NOT EXISTS quizzes (
+      id TEXT PRIMARY KEY,
+      title TEXT NOT NULL,
+      description TEXT,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    )
+  `)
 
-  CREATE TABLE IF NOT EXISTS questions (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    quiz_id TEXT NOT NULL,
-    type TEXT NOT NULL CHECK (type IN ('multiple-choice-single', 'multiple-choice-multiple', 'true-false', 'short-answer', 'file-upload')),
-    question TEXT NOT NULL,
-    options TEXT, -- JSON string for multiple choice options
-    correct_answer TEXT,
-    points INTEGER DEFAULT 1,
-    has_correct_answer BOOLEAN DEFAULT 1,
-    FOREIGN KEY (quiz_id) REFERENCES quizzes (id) ON DELETE CASCADE
-  );
+  await dbRun(`
+    CREATE TABLE IF NOT EXISTS questions (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      quiz_id TEXT NOT NULL,
+      type TEXT NOT NULL CHECK (type IN ('multiple-choice-single', 'multiple-choice-multiple', 'true-false', 'short-answer', 'file-upload')),
+      question TEXT NOT NULL,
+      options TEXT, -- JSON string for multiple choice options
+      correct_answer TEXT,
+      points INTEGER DEFAULT 1,
+      has_correct_answer BOOLEAN DEFAULT 1,
+      FOREIGN KEY (quiz_id) REFERENCES quizzes (id) ON DELETE CASCADE
+    )
+  `)
 
-  CREATE TABLE IF NOT EXISTS submissions (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    quiz_id TEXT NOT NULL,
-    student_name TEXT,
-    student_email TEXT,
-    answers TEXT, -- JSON string of answers
-    score INTEGER,
-    total_points INTEGER,
-    submitted_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (quiz_id) REFERENCES quizzes (id) ON DELETE CASCADE
-  );
-`)
+  await dbRun(`
+    CREATE TABLE IF NOT EXISTS submissions (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      quiz_id TEXT NOT NULL,
+      student_name TEXT,
+      student_email TEXT,
+      answers TEXT, -- JSON string of answers
+      score INTEGER,
+      total_points INTEGER,
+      submitted_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (quiz_id) REFERENCES quizzes (id) ON DELETE CASCADE
+    )
+  `)
+}
+
+// Initialize database on module load
+initializeDatabase().catch(console.error)
 
 export interface Quiz {
   id: string
@@ -76,11 +96,11 @@ export interface QuizWithQuestions extends Quiz {
 }
 
 // Quiz functions
-export const getQuizById = (id: string): QuizWithQuestions | null => {
-  const quiz = db.prepare('SELECT * FROM quizzes WHERE id = ?').get(id) as Quiz | undefined
+export const getQuizById = async (id: string): Promise<QuizWithQuestions | null> => {
+  const quiz = await dbGet('SELECT * FROM quizzes WHERE id = ?', [id]) as Quiz | undefined
   if (!quiz) return null
 
-  const questions = db.prepare('SELECT * FROM questions WHERE quiz_id = ?').all(id) as RawQuestion[]
+  const questions = await dbAll('SELECT * FROM questions WHERE quiz_id = ?', [id]) as RawQuestion[]
   
   // Parse options JSON
   const parsedQuestions: Question[] = questions.map(q => ({
@@ -95,37 +115,63 @@ export const getQuizById = (id: string): QuizWithQuestions | null => {
   }
 }
 
-export const createQuiz = (title: string, description: string, questions: Omit<Question, 'id' | 'quiz_id'>[]): string => {
+export const createQuiz = async (title: string, description: string, questions: Omit<Question, 'id' | 'quiz_id'>[]): Promise<string> => {
   const quizId = generateQuizId()
-  const insertQuiz = db.prepare('INSERT INTO quizzes (id, title, description) VALUES (?, ?, ?)')
-  const insertQuestion = db.prepare(`
-    INSERT INTO questions (quiz_id, type, question, options, correct_answer, points, has_correct_answer) 
-    VALUES (?, ?, ?, ?, ?, ?, ?)
-  `)
+  
+  return new Promise((resolve, reject) => {
+    db.serialize(() => {
+      db.run('BEGIN TRANSACTION')
+      
+      db.run('INSERT INTO quizzes (id, title, description) VALUES (?, ?, ?)', [quizId, title, description], function(err) {
+        if (err) {
+          db.run('ROLLBACK')
+          reject(err)
+          return
+        }
 
-  const transaction = db.transaction(() => {
-    insertQuiz.run(quizId, title, description)
+        let completed = 0
+        let hasError = false
 
-    for (const question of questions) {
-      insertQuestion.run(
-        quizId,
-        question.type,
-        question.question,
-        question.options ? JSON.stringify(question.options) : null,
-        question.correct_answer,
-        question.points,
-        question.has_correct_answer ? 1 : 0
-      )
-    }
+        if (questions.length === 0) {
+          db.run('COMMIT')
+          resolve(quizId)
+          return
+        }
 
-    return quizId
+        questions.forEach((question) => {
+          db.run(`
+            INSERT INTO questions (quiz_id, type, question, options, correct_answer, points, has_correct_answer) 
+            VALUES (?, ?, ?, ?, ?, ?, ?)
+          `, [
+            quizId,
+            question.type,
+            question.question,
+            question.options ? JSON.stringify(question.options) : null,
+            question.correct_answer,
+            question.points,
+            question.has_correct_answer ? 1 : 0
+          ], function(err) {
+            if (err && !hasError) {
+              hasError = true
+              db.run('ROLLBACK')
+              reject(err)
+              return
+            }
+
+            completed++
+            if (completed === questions.length && !hasError) {
+              db.run('COMMIT')
+              resolve(quizId)
+            }
+          })
+        })
+      })
+    })
   })
-
-  return transaction()
 }
 
-export const submitQuizAnswers = (quizId: string, studentName: string, studentEmail: string, answers: Record<string, string>): void => {
-  const quiz = getQuizById(quizId)
+export const submitQuizAnswers = async (quizId: string, studentName: string, studentEmail: string, answers: Record<string, string>): Promise<void> => {
+  const quiz = await getQuizById(quizId)
   if (!quiz) throw new Error('Quiz not found')
 
   let score = 0
@@ -158,12 +204,10 @@ export const submitQuizAnswers = (quizId: string, studentName: string, studentEm
     }
   })
 
-  const insertSubmission = db.prepare(`
+  await dbRun(`
     INSERT INTO submissions (quiz_id, student_name, student_email, answers, score, total_points) 
     VALUES (?, ?, ?, ?, ?, ?)
-  `)
-
-  insertSubmission.run(quizId, studentName, studentEmail, JSON.stringify(answers), score, totalPoints)
+  `, [quizId, studentName, studentEmail, JSON.stringify(answers), score, totalPoints])
 }
 
 export interface Submission {
@@ -177,51 +221,79 @@ export interface Submission {
   submitted_at: string
 }
 
-export const getAllSubmissions = (): Submission[] => {
-  const submissions = db.prepare('SELECT * FROM submissions ORDER BY submitted_at DESC').all() as Submission[]
+export const getAllSubmissions = async (): Promise<Submission[]> => {
+  const submissions = await dbAll('SELECT * FROM submissions ORDER BY submitted_at DESC') as Submission[]
   return submissions
 }
 
-export const getSubmissionsByQuizId = (quizId: string): Submission[] => {
-  const submissions = db.prepare('SELECT * FROM submissions WHERE quiz_id = ? ORDER BY submitted_at DESC').all(quizId) as Submission[]
+export const getSubmissionsByQuizId = async (quizId: string): Promise<Submission[]> => {
+  const submissions = await dbAll('SELECT * FROM submissions WHERE quiz_id = ? ORDER BY submitted_at DESC', [quizId]) as Submission[]
   return submissions
 }
 
-export const updateQuiz = (id: string, title: string, description: string, questions: Omit<Question, 'id' | 'quiz_id'>[]): void => {
-  const updateQuizStmt = db.prepare('UPDATE quizzes SET title = ?, description = ? WHERE id = ?')
-  const deleteQuestionsStmt = db.prepare('DELETE FROM questions WHERE quiz_id = ?')
-  const insertQuestion = db.prepare(`
-    INSERT INTO questions (quiz_id, type, question, options, correct_answer, points, has_correct_answer) 
-    VALUES (?, ?, ?, ?, ?, ?, ?)
-  `)
+export const updateQuiz = async (id: string, title: string, description: string, questions: Omit<Question, 'id' | 'quiz_id'>[]): Promise<void> => {
+  return new Promise((resolve, reject) => {
+    db.serialize(() => {
+      db.run('BEGIN TRANSACTION')
+      
+      db.run('UPDATE quizzes SET title = ?, description = ? WHERE id = ?', [title, description, id], function(err) {
+        if (err) {
+          db.run('ROLLBACK')
+          reject(err)
+          return
+        }
 
-  const transaction = db.transaction(() => {
-    // Update quiz details
-    updateQuizStmt.run(title, description, id)
-    
-    // Delete existing questions
-    deleteQuestionsStmt.run(id)
-    
-    // Insert new questions
-    for (const question of questions) {
-      insertQuestion.run(
-        id,
-        question.type,
-        question.question,
-        question.options ? JSON.stringify(question.options) : null,
-        question.correct_answer,
-        question.points,
-        question.has_correct_answer ? 1 : 0
-      )
-    }
+        db.run('DELETE FROM questions WHERE quiz_id = ?', [id], function(err) {
+          if (err) {
+            db.run('ROLLBACK')
+            reject(err)
+            return
+          }
+
+          if (questions.length === 0) {
+            db.run('COMMIT')
+            resolve()
+            return
+          }
+
+          let completed = 0
+          let hasError = false
+
+          questions.forEach((question) => {
+            db.run(`
+              INSERT INTO questions (quiz_id, type, question, options, correct_answer, points, has_correct_answer) 
+              VALUES (?, ?, ?, ?, ?, ?, ?)
+            `, [
+              id,
+              question.type,
+              question.question,
+              question.options ? JSON.stringify(question.options) : null,
+              question.correct_answer,
+              question.points,
+              question.has_correct_answer ? 1 : 0
+            ], function(err) {
+              if (err && !hasError) {
+                hasError = true
+                db.run('ROLLBACK')
+                reject(err)
+                return
+              }
+
+              completed++
+              if (completed === questions.length && !hasError) {
+                db.run('COMMIT')
+                resolve()
+              }
+            })
+          })
+        })
+      })
+    })
   })
-
-  transaction()
 }
 
-export const deleteQuiz = (id: string): void => {
-  const deleteQuizStmt = db.prepare('DELETE FROM quizzes WHERE id = ?')
-  deleteQuizStmt.run(id)
+export const deleteQuiz = async (id: string): Promise<void> => {
+  await dbRun('DELETE FROM quizzes WHERE id = ?', [id])
 }
 
 export default db 

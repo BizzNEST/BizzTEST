@@ -13,7 +13,7 @@ export async function GET(
       return NextResponse.json({ error: 'Invalid quiz ID' }, { status: 400 })
     }
 
-    const quiz = getQuizById(quizId)
+    const quiz = await getQuizById(quizId)
     
     if (!quiz) {
       return NextResponse.json({ error: 'Quiz not found' }, { status: 404 })
@@ -65,7 +65,7 @@ export async function PUT(
          !(Array.isArray(q.correctAnswer) && q.correctAnswer.length === 0))
     }))
 
-    updateQuiz(quizId, name, description || '', dbQuestions)
+    await updateQuiz(quizId, name, description || '', dbQuestions)
 
     return NextResponse.json({ message: 'Quiz updated successfully' })
   } catch (error) {
@@ -87,12 +87,12 @@ export async function DELETE(
     }
 
     // Check if quiz exists
-    const quiz = getQuizById(quizId)
+    const quiz = await getQuizById(quizId)
     if (!quiz) {
       return NextResponse.json({ error: 'Quiz not found' }, { status: 404 })
     }
 
-    deleteQuiz(quizId)
+    await deleteQuiz(quizId)
 
     return NextResponse.json({ message: 'Quiz deleted successfully' })
   } catch (error) {
