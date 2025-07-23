@@ -532,7 +532,7 @@ export default function QuizPage() {
           {question.type === "multiple-choice-single" && (
             <RadioGroup
               value={answers[question.id.toString()] || ""}
-              onValueChange={(value) => handleAnswerChange(question.id.toString(), value)}
+              onValueChange={(value: string) => handleAnswerChange(question.id.toString(), value)}
             >
               {question.options?.map((option, index) => (
                 <div key={index} className="flex items-center space-x-2">
@@ -547,12 +547,13 @@ export default function QuizPage() {
 
           {question.type === "multiple-choice-multiple" && (
             <div className="space-y-3">
+              <p className="text-sm text-muted-foreground italic">Select all that apply</p>
               {question.options?.map((option, index) => (
                 <div key={index} className="flex items-center space-x-2">
                   <Checkbox
                     id={`option-${index}`}
                     checked={answers[question.id.toString()]?.split(',').includes(index.toString()) || false}
-                    onCheckedChange={(checked) => {
+                    onCheckedChange={(checked: boolean) => {
                       const currentAnswers = answers[question.id.toString()]?.split(',').filter(a => a !== '') || [];
                       if (checked) {
                         const newAnswers = [...currentAnswers, index.toString()];
@@ -574,7 +575,7 @@ export default function QuizPage() {
           {question.type === "true-false" && (
             <RadioGroup
               value={answers[question.id.toString()] || ""}
-              onValueChange={(value) => handleAnswerChange(question.id.toString(), value)}
+              onValueChange={(value: string) => handleAnswerChange(question.id.toString(), value)}
             >
               <div className="flex items-center space-x-2">
                 <RadioGroupItem value="true" id="true" />
