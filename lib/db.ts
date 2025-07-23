@@ -34,6 +34,7 @@ const initializeDatabase = async () => {
     CREATE TABLE IF NOT EXISTS questions (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       quiz_id TEXT NOT NULL,
+      order_index INTEGER NOT NULL,
       type TEXT NOT NULL CHECK (type IN ('multiple-choice-single', 'multiple-choice-multiple', 'true-false', 'short-answer', 'file-upload')),
       question TEXT NOT NULL,
       options TEXT, -- JSON string for multiple choice options
@@ -100,7 +101,7 @@ export const getQuizById = async (id: string): Promise<QuizWithQuestions | null>
   const quiz = await dbGet('SELECT * FROM quizzes WHERE id = ?', [id]) as Quiz | undefined
   if (!quiz) return null
 
-  const questions = await dbAll('SELECT * FROM questions WHERE quiz_id = ?', [id]) as RawQuestion[]
+  const questions = await dbAll('SELECT * FROM questions WHERE quiz_id = ? ORDER BY order_index', [id]) as RawQuestion[]
   
   // Parse options JSON
   const parsedQuestions: Question[] = questions.map(q => ({
@@ -129,21 +130,27 @@ export const createQuiz = async (title: string, description: string, questions: 
           return
         }
 
-        let completed = 0
-        let hasError = false
-
         if (questions.length === 0) {
           db.run('COMMIT')
           resolve(quizId)
           return
         }
 
-        questions.forEach((question) => {
+        // Insert questions sequentially to maintain order
+        const insertQuestion = (index: number) => {
+          if (index >= questions.length) {
+            db.run('COMMIT')
+            resolve(quizId)
+            return
+          }
+
+          const question = questions[index]
           db.run(`
-            INSERT INTO questions (quiz_id, type, question, options, correct_answer, points, has_correct_answer) 
-            VALUES (?, ?, ?, ?, ?, ?, ?)
+            INSERT INTO questions (quiz_id, order_index, type, question, options, correct_answer, points, has_correct_answer) 
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
           `, [
             quizId,
+            index,
             question.type,
             question.question,
             question.options ? JSON.stringify(question.options) : null,
@@ -151,20 +158,19 @@ export const createQuiz = async (title: string, description: string, questions: 
             question.points,
             question.has_correct_answer ? 1 : 0
           ], function(err) {
-            if (err && !hasError) {
-              hasError = true
+            if (err) {
               db.run('ROLLBACK')
               reject(err)
               return
             }
 
-            completed++
-            if (completed === questions.length && !hasError) {
-              db.run('COMMIT')
-              resolve(quizId)
-            }
+            // Insert next question
+            insertQuestion(index + 1)
           })
-        })
+        }
+
+        // Start inserting from the first question
+        insertQuestion(0)
       })
     })
   })
@@ -256,15 +262,21 @@ export const updateQuiz = async (id: string, title: string, description: string,
             return
           }
 
-          let completed = 0
-          let hasError = false
+          // Insert questions sequentially to maintain order
+          const insertQuestion = (index: number) => {
+            if (index >= questions.length) {
+              db.run('COMMIT')
+              resolve()
+              return
+            }
 
-          questions.forEach((question) => {
+            const question = questions[index]
             db.run(`
-              INSERT INTO questions (quiz_id, type, question, options, correct_answer, points, has_correct_answer) 
-              VALUES (?, ?, ?, ?, ?, ?, ?)
+              INSERT INTO questions (quiz_id, order_index, type, question, options, correct_answer, points, has_correct_answer) 
+              VALUES (?, ?, ?, ?, ?, ?, ?, ?)
             `, [
               id,
+              index,
               question.type,
               question.question,
               question.options ? JSON.stringify(question.options) : null,
@@ -272,20 +284,19 @@ export const updateQuiz = async (id: string, title: string, description: string,
               question.points,
               question.has_correct_answer ? 1 : 0
             ], function(err) {
-              if (err && !hasError) {
-                hasError = true
+              if (err) {
                 db.run('ROLLBACK')
                 reject(err)
                 return
               }
 
-              completed++
-              if (completed === questions.length && !hasError) {
-                db.run('COMMIT')
-                resolve()
-              }
+              // Insert next question
+              insertQuestion(index + 1)
             })
-          })
+          }
+
+          // Start inserting from the first question
+          insertQuestion(0)
         })
       })
     })

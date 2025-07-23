@@ -823,6 +823,273 @@ Design a flyer (e.g., 1080x1080px) with title, time/date/location, and visual el
   },
 ]
 
+
+const bizzNestWebDevQuestions = [
+  {
+    type: 'multiple-choice-single' as const,
+    question: 'Which HTML element is used to define the main content of a document?',
+    options: ['<header>', '<section>', '<main>', '<body>'],
+    correct_answer: '2',
+    points: 1,
+    has_correct_answer: true,
+  },
+  {
+    type: 'multiple-choice-single' as const,
+    question: 'Which attribute is essential for accessibility when embedding images?',
+    options: ['title', 'srcset', 'alt', 'loading'],
+    correct_answer: '2',
+    points: 1,
+    has_correct_answer: true,
+  },
+  {
+    type: 'multiple-choice-single' as const,
+    question: 'Which CSS property controls the space inside an element?',
+    options: ['margin', 'border', 'padding', 'gap'],
+    correct_answer: '2',
+    points: 1,
+    has_correct_answer: true,
+  },
+  {
+    type: 'multiple-choice-single' as const,
+    question: 'Which CSS rule targets .btn only on hover?',
+    options: ['.btn.active { }', '.btn::after { }', '.btn:hover { }', 'button.btn { }'],
+    correct_answer: '2',
+    points: 1,
+    has_correct_answer: true,
+  },
+  {
+    type: 'multiple-choice-multiple' as const,
+    question: 'Which techniques help create responsive layouts?',
+    options: [
+      'Using media queries',
+      'Using flexible grid/fractional units',
+      'Fixed-width containers in pixels only',
+      'Applying relative units like em/rem/vw',
+    ],
+    correct_answer: '0,1,3',
+    points: 2,
+    has_correct_answer: true,
+  },
+  {
+    type: 'multiple-choice-single' as const,
+    question: 'Which React Hook adds local state to a function component?',
+    options: ['useRef', 'useState', 'useContext', 'useMemo'],
+    correct_answer: '1',
+    points: 1,
+    has_correct_answer: true,
+  },
+  {
+    type: 'multiple-choice-single' as const,
+    question: 'How do you pass data from a parent to a child component in React?',
+    options: ['Global variables', 'Via props', 'Modifying child state', 'Using useEffect'],
+    correct_answer: '1',
+    points: 1,
+    has_correct_answer: true,
+  },
+  {
+    type: 'multiple-choice-single' as const,
+    question: 'Why should items in a React .map() list have a key?',
+    options: [
+      'To set a CSS class',
+      'To help React track updates efficiently',
+      'To bind events',
+      'To improve SEO',
+    ],
+    correct_answer: '1',
+    points: 1,
+    has_correct_answer: true,
+  },
+  {
+    type: 'multiple-choice-single' as const,
+    question: 'Which Node.js core module enables file I/O?',
+    options: ['http', 'fs', 'path', 'os'],
+    correct_answer: '1',
+    points: 1,
+    has_correct_answer: true,
+  },
+  {
+    type: 'multiple-choice-single' as const,
+    question: 'How do you install a dev-only dependency with npm?',
+    options: [
+      'npm install <pkg>',
+      'npm install <pkg> --save-dev',
+      'npm install <pkg> -g',
+      'npm add <pkg>',
+    ],
+    correct_answer: '1',
+    points: 1,
+    has_correct_answer: true,
+  },
+  {
+    type: 'multiple-choice-single' as const,
+    question: 'Which is true about async/await in Node.js?',
+    options: [
+      'await works outside async functions.',
+      'async makes functions synchronous.',
+      'await pauses inside async until resolved.',
+      'async/await only works with callbacks.',
+    ],
+    correct_answer: '2',
+    points: 1,
+    has_correct_answer: true,
+  },
+  {
+    type: 'multiple-choice-single' as const,
+    question: 'Which Git command creates a new branch and switches to it?',
+    options: [
+      'git branch <branch>',
+      'git switch <branch>',
+      'git checkout -b <branch>',
+      'git merge <branch>',
+    ],
+    correct_answer: '2',
+    points: 1,
+    has_correct_answer: true,
+  },
+  {
+    type: 'multiple-choice-single' as const,
+    question: 'Which file must be committed to share dependencies?',
+    options: ['package-lock.json', '.env', 'package.json', '.gitignore'],
+    correct_answer: '2',
+    points: 1,
+    has_correct_answer: true,
+  },
+  {
+    type: 'multiple-choice-multiple' as const,
+    question: 'Which practices define a good Git commit message?',
+    options: [
+      'Use imperative mood',
+      'Include unrelated changes',
+      'Keep summary line under 50 characters',
+      'Write message in uppercase',
+    ],
+    correct_answer: '0,2',
+    points: 2,
+    has_correct_answer: true,
+  },
+  {
+    type: 'multiple-choice-single' as const,
+    question: 'Which Git operation rewrites history to keep it linear?',
+    options: [
+      'git merge --no-ff',
+      'git rebase',
+      'git cherry-pick',
+      'git revert',
+    ],
+    correct_answer: '1',
+    points: 1,
+    has_correct_answer: true,
+  },
+  {
+    type: 'multiple-choice-single' as const,
+    question: 'Which element semantically defines navigation?',
+    options: ['<div>', '<nav>', '<span>', '<article>'],
+    correct_answer: '1',
+    points: 1,
+    has_correct_answer: true,
+  },
+  {
+    type: 'multiple-choice-single' as const,
+    question: 'Which box model property is NOT part of total width calculation?',
+    options: ['margin', 'padding', 'border', 'width'],
+    correct_answer: '0',
+    points: 1,
+    has_correct_answer: true,
+  },
+  {
+    type: 'multiple-choice-single' as const,
+    question: 'What does app.listen(3000) do in Express?',
+    options: [
+      'Defines middleware',
+      'Starts server listening on port 3000',
+      'Connects to database',
+      'Adds a route',
+    ],
+    correct_answer: '1',
+    points: 1,
+    has_correct_answer: true,
+  },
+  {
+    type: 'multiple-choice-single' as const,
+    question: 'Which tag improves SEO with metadata?',
+    options: ['<link>', '<meta>', '<script>', '<section>'],
+    correct_answer: '1',
+    points: 1,
+    has_correct_answer: true,
+  },
+  {
+    type: 'multiple-choice-single' as const,
+    question: 'In Flexbox, what controls spacing along the main axis?',
+    options: ['align-items', 'justify-content', 'flex-wrap', 'order'],
+    correct_answer: '1',
+    points: 1,
+    has_correct_answer: true,
+  },
+  {
+    type: 'multiple-choice-single' as const,
+    question: 'Which file tells Git to ignore certain files?',
+    options: ['README.md', 'gitconfig', '.gitignore', '.gitattributes'],
+    correct_answer: '2',
+    points: 1,
+    has_correct_answer: true,
+  },
+  {
+    type: 'multiple-choice-single' as const,
+    question: 'What’s the purpose of a package.json "build" script?',
+    options: [
+      'List collaborators',
+      'Define npm run build',
+      'Specify Node.js version',
+      'Configure ESLint',
+    ],
+    correct_answer: '1',
+    points: 1,
+    has_correct_answer: true,
+  },
+  {
+    type: 'multiple-choice-single' as const,
+    question: 'How do you export exactly one value in modern React?',
+    options: [
+      'export const MyComponent = () => {}',
+      'export default MyComponent;',
+      'module.exports = MyComponent;',
+      'exports.MyComponent = MyComponent;',
+    ],
+    correct_answer: '1',
+    points: 1,
+    has_correct_answer: true,
+  },
+  {
+    type: 'multiple-choice-single' as const,
+    question: 'Which command updates your branch while preserving your commits on top?',
+    options: [
+      'git pull --merge',
+      'git pull --rebase',
+      'git fetch && git reset --hard origin/main',
+      'git stash',
+    ],
+    correct_answer: '1',
+    points: 1,
+    has_correct_answer: true,
+  },
+  {
+    type: 'file-upload' as const,
+    question: `Choose one of the following web dev projects. You have 15–20 minutes. Submit the result to your department lead.
+
+**Project 1 – Static Web Page (HTML/CSS):**
+Build a responsive portfolio page with your name, about section, list of 3 skills, and a button linking to GitHub.
+
+**Project 2 – React To‑Do Component:**
+Create a React to-do component allowing add/view/complete tasks using useState and functional components.
+
+**Project 3 – Node.js/Express API Stub:**
+Create a simple REST API with GET/POST routes for tasks using in-memory data and express.json() middleware.`,
+    points: 10,
+    has_correct_answer: false,
+  },
+]
+
+
 const seedDatabase = async () => {
   try {
     const quizId1 = await createQuiz(
@@ -843,9 +1110,16 @@ const seedDatabase = async () => {
       bizzNestMarketingQuestions
     )
 
+    const quizId4 = await createQuiz(
+      'bizzNEST – Web Development Technical Skills Assessment',
+      'A mixed-format web development quiz assessing technical web development knowledge and visual communication skills.',
+      bizzNestWebDevQuestions
+    )
+
     console.log(`Created bizzNEST Design quiz with ID: ${quizId1}`)
     console.log(`Created bizzNEST Video quiz with ID: ${quizId2}`)
     console.log(`Created bizzNEST Marketing quiz with ID: ${quizId3}`)
+    console.log(`Created bizzNEST Web Development quiz with ID: ${quizId4}`)
     
     console.log('Database seeded successfully!')
   } catch (error) {

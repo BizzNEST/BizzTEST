@@ -89,8 +89,11 @@ export default function QuizzesPage() {
   }
 
   const formatDate = (dateString: string) => {
-    const date = new Date(dateString)
-    return new Intl.DateTimeFormat("en-US", {
+    // SQLite CURRENT_TIMESTAMP returns UTC time without timezone indicator
+    // Add 'Z' to ensure it's parsed as UTC, then converted to local time for display
+    const utcDateString = dateString.includes('Z') ? dateString : dateString + 'Z'
+    const date = new Date(utcDateString)
+    return new Intl.DateTimeFormat(undefined, {
       month: "short",
       day: "numeric",
       year: "numeric",
@@ -169,11 +172,13 @@ export default function QuizzesPage() {
                     </CardDescription>
                   </div>
                 </div>
-                <div className="flex items-center gap-2 mt-4">
-                  <Badge variant="outline" className="text-xs">
-                    Created {formatDate(quiz.created_at)}
-                  </Badge>
-                </div>
+                {isAuthenticated && (
+                  <div className="flex items-center gap-2 mt-4">
+                    <Badge variant="outline" className="text-xs">
+                      Created {formatDate(quiz.created_at)}
+                    </Badge>
+                  </div>
+                )}
               </CardHeader>
               <CardContent className="flex-1 flex flex-col justify-end">
                 <div className="space-y-2">

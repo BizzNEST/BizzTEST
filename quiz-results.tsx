@@ -64,8 +64,11 @@ export default function QuizResults() {
   }, [])
 
   const formatDate = (dateString: string) => {
-    const date = new Date(dateString)
-    return new Intl.DateTimeFormat("en-US", {
+    // SQLite CURRENT_TIMESTAMP returns UTC time without timezone indicator
+    // Add 'Z' to ensure it's parsed as UTC, then converted to local time for display
+    const utcDateString = dateString.includes('Z') ? dateString : dateString + 'Z'
+    const date = new Date(utcDateString)
+    return new Intl.DateTimeFormat(undefined, {
       month: "short",
       day: "numeric",
       year: "numeric",
