@@ -823,26 +823,36 @@ Design a flyer (e.g., 1080x1080px) with title, time/date/location, and visual el
   },
 ]
 
+const seedDatabase = async () => {
+  try {
+    const quizId1 = await createQuiz(
+      'bizzNEST – Design Technical Skills Assessment',
+      'A mixed-format design quiz assessing technical design knowledge and visual communication skills.',
+      bizzNestDesignQuestions
+    )
 
-const quizId1 = createQuiz(
-  'bizzNEST – Design Technical Skills Assessment',
-  'A mixed-format design quiz assessing technical design knowledge and visual communication skills.',
-  bizzNestDesignQuestions
-)
+    const quizId2 = await createQuiz(
+      'bizzNEST – Video Technical Skills Assessment',
+      'A mixed-format video quiz assessing technical video knowledge and visual communication skills.',
+      bizzNestVideoQuestions
+    )
 
-const quizId2 = createQuiz(
-  'bizzNEST – Video Technical Skills Assessment',
-  'A mixed-format video quiz assessing technical video knowledge and visual communication skills.',
-  bizzNestVideoQuestions
-)
+    const quizId3 = await createQuiz(
+      'bizzNEST – Marketing Technical Skills Assessment',
+      'A mixed-format marketing quiz assessing technical marketing knowledge and visual communication skills.',
+      bizzNestMarketingQuestions
+    )
 
-const quizId3 = createQuiz(
-  'bizzNEST – Marketing Technical Skills Assessment',
-  'A mixed-format marketing quiz assessing technical marketing knowledge and visual communication skills.',
-  bizzNestMarketingQuestions
-)
+    console.log(`Created bizzNEST Design quiz with ID: ${quizId1}`)
+    console.log(`Created bizzNEST Video quiz with ID: ${quizId2}`)
+    console.log(`Created bizzNEST Marketing quiz with ID: ${quizId3}`)
+    
+    console.log('Database seeded successfully!')
+  } catch (error) {
+    console.error('Error seeding database:', error)
+    process.exit(1)
+  }
+}
 
-
-console.log(`Created bizzNEST Design quiz with ID: ${quizId1}`)
-console.log(`Created bizzNEST Video quiz with ID: ${quizId2}`)
-console.log(`Created bizzNEST Marketing quiz with ID: ${quizId3}`)
+// Run the seed function
+seedDatabase()
