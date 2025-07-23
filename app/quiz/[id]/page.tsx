@@ -638,11 +638,11 @@ export default function QuizPage() {
 
       <div className="mt-6 p-4 bg-gray-50 rounded-lg">
         <h3 className="font-medium mb-2">Progress Overview</h3>
-        <div className="grid grid-cols-6 gap-2">
+        <div className="grid grid-cols-8 gap-1">
           {quiz.questions.map((_, index) => (
             <div
               key={index}
-              className={`h-8 rounded flex items-center justify-center text-sm font-medium cursor-pointer transition-colors ${
+              className={`h-6 rounded flex items-center justify-center text-xs font-medium cursor-pointer transition-colors ${
                 index === currentQuestion
                   ? "bg-blue-600 text-white"
                   : isAnswered(quiz.questions[index].id.toString())

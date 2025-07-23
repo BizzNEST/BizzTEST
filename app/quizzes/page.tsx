@@ -4,7 +4,17 @@ import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
-import { Copy, ExternalLink, Plus, BookOpen, Loader2, CheckCircle } from "lucide-react"
+import { 
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog"
+import { Copy, ExternalLink, Plus, BookOpen, Loader2, CheckCircle, Edit, Trash2 } from "lucide-react"
 import Link from "next/link"
 import { useAuth } from "@/hooks/use-auth"
 
@@ -21,6 +31,8 @@ export default function QuizzesPage() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [copiedId, setCopiedId] = useState<string | null>(null)
+  const [deleteQuizId, setDeleteQuizId] = useState<string | null>(null)
+  const [deleting, setDeleting] = useState(false)
 
   useEffect(() => {
     const fetchQuizzes = async () => {
@@ -50,6 +62,29 @@ export default function QuizzesPage() {
       setTimeout(() => setCopiedId(null), 2000)
     } catch (err) {
       console.error('Failed to copy to clipboard:', err)
+    }
+  }
+
+  const handleDeleteQuiz = async () => {
+    if (!deleteQuizId) return
+
+    setDeleting(true)
+    try {
+      const response = await fetch(`/api/quiz/${deleteQuizId}`, {
+        method: 'DELETE',
+      })
+
+      if (!response.ok) {
+        throw new Error('Failed to delete quiz')
+      }
+
+      // Remove the quiz from the local state
+      setQuizzes(prev => prev.filter(quiz => quiz.id !== deleteQuizId))
+      setDeleteQuizId(null)
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to delete quiz')
+    } finally {
+      setDeleting(false)
     }
   }
 
@@ -165,12 +200,58 @@ export default function QuizzesPage() {
                       </>
                     )}
                   </Button>
+                  {isAuthenticated && (
+                    <div className="flex gap-2">
+                      <Link href={`/edit-quiz/${quiz.id}`} className="flex-1">
+                        <Button variant="outline" className="w-full">
+                          <Edit className="h-4 w-4 mr-2" />
+                          Edit
+                        </Button>
+                      </Link>
+                      <Button
+                        variant="outline"
+                        className="flex-1 text-red-600 hover:text-red-700 hover:bg-red-50"
+                        onClick={() => setDeleteQuizId(quiz.id)}
+                      >
+                        <Trash2 className="h-4 w-4 mr-2" />
+                        Delete
+                      </Button>
+                    </div>
+                  )}
                 </div>
               </CardContent>
             </Card>
           ))}
         </div>
       )}
+
+      <AlertDialog open={!!deleteQuizId} onOpenChange={() => setDeleteQuizId(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Quiz</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to delete this quiz? This action cannot be undone and will also delete all associated submissions.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={deleting}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleDeleteQuiz}
+              disabled={deleting}
+              className="bg-red-600 hover:bg-red-700"
+            >
+              {deleting ? (
+                <>
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  Deleting...
+                </>
+              ) : (
+                "Delete Quiz"
+              )}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   )
 } 

@@ -187,4 +187,41 @@ export const getSubmissionsByQuizId = (quizId: string): Submission[] => {
   return submissions
 }
 
+export const updateQuiz = (id: string, title: string, description: string, questions: Omit<Question, 'id' | 'quiz_id'>[]): void => {
+  const updateQuizStmt = db.prepare('UPDATE quizzes SET title = ?, description = ? WHERE id = ?')
+  const deleteQuestionsStmt = db.prepare('DELETE FROM questions WHERE quiz_id = ?')
+  const insertQuestion = db.prepare(`
+    INSERT INTO questions (quiz_id, type, question, options, correct_answer, points, has_correct_answer) 
+    VALUES (?, ?, ?, ?, ?, ?, ?)
+  `)
+
+  const transaction = db.transaction(() => {
+    // Update quiz details
+    updateQuizStmt.run(title, description, id)
+    
+    // Delete existing questions
+    deleteQuestionsStmt.run(id)
+    
+    // Insert new questions
+    for (const question of questions) {
+      insertQuestion.run(
+        id,
+        question.type,
+        question.question,
+        question.options ? JSON.stringify(question.options) : null,
+        question.correct_answer,
+        question.points,
+        question.has_correct_answer ? 1 : 0
+      )
+    }
+  })
+
+  transaction()
+}
+
+export const deleteQuiz = (id: string): void => {
+  const deleteQuizStmt = db.prepare('DELETE FROM quizzes WHERE id = ?')
+  deleteQuizStmt.run(id)
+}
+
 export default db 
