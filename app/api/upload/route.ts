@@ -21,9 +21,9 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'File size must be less than 10MB' }, { status: 400 })
     }
 
-    // Generate unique filename
+    // Generate unique filename with proper sanitization
     const timestamp = Date.now()
-    const originalName = file.name.replace(/[^a-zA-Z0-9.-]/g, '_') // Sanitize filename
+    const originalName = file.name.replace(/[^a-zA-Z0-9.-_]/g, '_') // Sanitize filename
     const filename = `${timestamp}_${originalName}`
 
     // Ensure upload directory exists
@@ -39,8 +39,8 @@ export async function POST(request: NextRequest) {
     const uploadPath = join(uploadDir, filename)
     writeFileSync(uploadPath, buffer)
 
-    // Return the file URL
-    const fileUrl = `/uploads/${filename}`
+    // Return the file URL using our custom API route
+    const fileUrl = `/api/uploads/${filename}`
     
     return NextResponse.json({ 
       success: true, 
