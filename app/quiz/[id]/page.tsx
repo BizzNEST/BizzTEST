@@ -11,16 +11,18 @@ import { Textarea } from "@/components/ui/textarea"
 import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
 import { FileUpload } from "@/components/ui/file-upload"
+import { CodeEditor } from "@/components/ui/code-editor"
 import { CheckCircle, XCircle, Clock, Award, Loader2, User, Download, Maximize2 } from "lucide-react"
 
 interface Question {
   id: number
-  type: "multiple-choice-single" | "multiple-choice-multiple" | "true-false" | "short-answer" | "file-upload"
+  type: "multiple-choice-single" | "multiple-choice-multiple" | "true-false" | "short-answer" | "file-upload" | "code"
   question: string
   options?: string[]
   correct_answer?: string
   points: number
   has_correct_answer: boolean
+  language?: string
 }
 
 interface Quiz {
@@ -211,6 +213,9 @@ export default function QuizPage() {
       const isImageUrl = /\.(jpg|jpeg|png|gif|webp)$/i.test(userAnswer) || userAnswer.startsWith('http')
       return isImageUrl ? "Image uploaded/provided" : "File uploaded"
     }
+    if (question.type === "code") {
+      return userAnswer || "No code provided"
+    }
     return userAnswer
   }
 
@@ -395,9 +400,20 @@ export default function QuizPage() {
                 <CardContent className="space-y-3">
                   <div>
                     <Label className="text-sm font-medium">Your Answer:</Label>
-                    <p className="text-sm bg-gray-50 p-2 rounded mt-1">
-                      {getDisplayAnswer(question, userAnswer)}
-                    </p>
+                    {question.type === "code" ? (
+                      <div className="mt-1">
+                        <CodeEditor
+                          language={question.language || "javascript"}
+                          value={userAnswer || ""}
+                          onChange={() => {}} // Read-only in results
+                          readOnly={true}
+                        />
+                      </div>
+                    ) : (
+                      <p className="text-sm bg-gray-50 p-2 rounded mt-1">
+                        {getDisplayAnswer(question, userAnswer)}
+                      </p>
+                    )}
                     {question.type === "file-upload" && userAnswer && (
                       <div className="mt-2">
                         {/\.(jpg|jpeg|png|gif|webp)$/i.test(userAnswer) || userAnswer.startsWith('http') ? (
@@ -607,6 +623,14 @@ export default function QuizPage() {
             <FileUpload
               onFileUpload={(fileUrl) => handleAnswerChange(question.id.toString(), fileUrl)}
               currentValue={answers[question.id.toString()]}
+            />
+          )}
+
+          {question.type === "code" && (
+            <CodeEditor
+              language={question.language || "javascript"}
+              value={answers[question.id.toString()] || ""}
+              onChange={(code: string) => handleAnswerChange(question.id.toString(), code)}
             />
           )}
         </CardContent>

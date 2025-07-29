@@ -13,8 +13,9 @@ import { Checkbox } from "@/components/ui/checkbox"
 import { Badge } from "@/components/ui/badge"
 import { Plus, Trash2, GripVertical, Loader2, ArrowLeft } from "lucide-react"
 import Link from "next/link"
+import { CodeEditor } from "@/components/ui/code-editor"
 
-type QuestionType = "multiple-choice-single" | "multiple-choice-multiple" | "true-false" | "short-answer" | "file-upload"
+type QuestionType = "multiple-choice-single" | "multiple-choice-multiple" | "true-false" | "short-answer" | "file-upload" | "code"
 
 interface Question {
   id: string
@@ -23,6 +24,7 @@ interface Question {
   options?: string[]
   correctAnswer?: string | string[]
   points: number
+  language?: string
 }
 
 interface Quiz {
@@ -65,6 +67,7 @@ export default function EditQuizComponent({ quizId }: EditQuizComponentProps) {
             ? q.correct_answer.split(',') 
             : q.correct_answer,
           points: q.points,
+          language: q.language,
         }))
 
         setQuiz({
@@ -129,6 +132,10 @@ export default function EditQuizComponent({ quizId }: EditQuizComponentProps) {
     } else if (type === "file-upload") {
       updates.options = undefined
       updates.correctAnswer = ""
+    } else if (type === "code") {
+      updates.options = undefined
+      updates.correctAnswer = ""
+      updates.language = "javascript" // Default language for code questions
     } else {
       updates.options = undefined
       updates.correctAnswer = ""
@@ -272,6 +279,7 @@ export default function EditQuizComponent({ quizId }: EditQuizComponentProps) {
                   <SelectItem value="true-false">True/False</SelectItem>
                   <SelectItem value="short-answer">Short Answer</SelectItem>
                   <SelectItem value="file-upload">File Upload</SelectItem>
+                  <SelectItem value="code">Code</SelectItem>
                 </SelectContent>
               </Select>
               <div>
@@ -418,6 +426,24 @@ export default function EditQuizComponent({ quizId }: EditQuizComponentProps) {
               <p className="text-sm text-muted-foreground">
                 File upload questions do not have a specific expected answer.
                 Students will upload a file, and you will grade it manually.
+              </p>
+            </div>
+          )}
+
+          {question.type === "code" && (
+            <div className="space-y-3">
+              <Label>Code Question</Label>
+              <CodeEditor
+                language={question.language || "javascript"}
+                value=""
+                onChange={() => {}} // No expected answer for code questions
+                onLanguageChange={(language) => updateQuestion(question.id, { language })}
+                showLanguageSelector={true}
+                readOnly={true}
+                placeholder="Students will write their code here..."
+              />
+              <p className="text-sm text-muted-foreground">
+                Code questions are always open-ended and require manual grading
               </p>
             </div>
           )}

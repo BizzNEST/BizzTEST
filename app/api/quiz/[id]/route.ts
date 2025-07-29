@@ -54,15 +54,17 @@ export async function PUT(
       type: q.type,
       question: q.question,
       options: q.options,
-      correct_answer: q.type === 'multiple-choice-multiple' && Array.isArray(q.correctAnswer) 
+      correct_answer: q.type === 'code' ? null :
+        q.type === 'multiple-choice-multiple' && Array.isArray(q.correctAnswer) 
         ? q.correctAnswer.join(',') 
-        : q.correctAnswer,
+        : q.correctAnswer || null,
       points: q.points || 1,
       has_correct_answer: q.type === 'short-answer' ? 
         (q.correctAnswer && q.correctAnswer.trim() !== '') : 
-        q.type === 'file-upload' ? false :
+        q.type === 'file-upload' || q.type === 'code' ? false :
         (q.correctAnswer !== undefined && q.correctAnswer !== '' && 
-         !(Array.isArray(q.correctAnswer) && q.correctAnswer.length === 0))
+         !(Array.isArray(q.correctAnswer) && q.correctAnswer.length === 0)),
+      language: q.language || null
     }))
 
     await updateQuiz(quizId, name, description || '', dbQuestions)

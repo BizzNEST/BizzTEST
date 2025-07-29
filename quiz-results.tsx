@@ -7,6 +7,7 @@ import { Badge } from "@/components/ui/badge"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import { CheckCircle, XCircle, Clock, ChevronRight, Search, Download, BarChart3, Users, Loader2, Maximize2 } from "lucide-react"
+import { CodeEditor } from "@/components/ui/code-editor"
 
 // Types
 interface QuizSubmission {
@@ -28,7 +29,7 @@ interface QuizSubmission {
 interface Answer {
   questionId: string
   questionText: string
-  questionType: "multiple-choice-single" | "multiple-choice-multiple" | "true-false" | "short-answer" | "file-upload"
+  questionType: "multiple-choice-single" | "multiple-choice-multiple" | "true-false" | "short-answer" | "file-upload" | "code"
   studentAnswer: string
   correctAnswer?: string
   isCorrect?: boolean
@@ -36,6 +37,7 @@ interface Answer {
   earnedPoints: number
   options?: string[]
   hasCorrectAnswer: boolean
+  language?: string
 }
 
 export default function QuizResults() {
@@ -131,7 +133,8 @@ export default function QuizResults() {
         points: question.points,
         earnedPoints: question.has_correct_answer && isCorrect ? question.points : 0,
         options: question.options,
-        hasCorrectAnswer: question.has_correct_answer
+        hasCorrectAnswer: question.has_correct_answer,
+        language: question.language
       }
     })
   }
@@ -357,6 +360,33 @@ export default function QuizResults() {
                             </div>
                           ))}
                         </div>
+                      </div>
+                    )}
+
+                    {answer.questionType === "code" && (
+                      <div>
+                        <p className="text-sm font-medium text-muted-foreground mb-2">Student Code:</p>
+                        <div className="border rounded-md">
+                          <CodeEditor
+                            language={answer.language || "javascript"}
+                            value={answer.studentAnswer || "// No code provided"}
+                            onChange={() => {}}
+                            readOnly={true}
+                          />
+                        </div>
+                        {answer.hasCorrectAnswer && answer.correctAnswer && (
+                          <div className="mt-2">
+                            <p className="text-sm font-medium text-muted-foreground">Expected Code:</p>
+                            <div className="border rounded-md">
+                              <CodeEditor
+                                language={answer.language || "javascript"}
+                                value={answer.correctAnswer}
+                                onChange={() => {}}
+                                readOnly={true}
+                              />
+                            </div>
+                          </div>
+                        )}
                       </div>
                     )}
 

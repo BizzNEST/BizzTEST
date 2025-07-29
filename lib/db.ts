@@ -30,20 +30,67 @@ const initializeDatabase = async () => {
     )
   `)
 
-  await dbRun(`
-    CREATE TABLE IF NOT EXISTS questions (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      quiz_id TEXT NOT NULL,
-      order_index INTEGER NOT NULL,
-      type TEXT NOT NULL CHECK (type IN ('multiple-choice-single', 'multiple-choice-multiple', 'true-false', 'short-answer', 'file-upload')),
-      question TEXT NOT NULL,
-      options TEXT, -- JSON string for multiple choice options
-      correct_answer TEXT,
-      points INTEGER DEFAULT 1,
-      has_correct_answer BOOLEAN DEFAULT 1,
-      FOREIGN KEY (quiz_id) REFERENCES quizzes (id) ON DELETE CASCADE
-    )
-  `)
+  // Check if questions table exists and has the old constraint
+  const tableInfo = await dbGet(`SELECT sql FROM sqlite_master WHERE type='table' AND name='questions'`)
+  
+  if (tableInfo && !tableInfo.sql.includes("'code'")) {
+    // Table exists but doesn't have 'code' in constraint - need to recreate
+    console.log('Migrating questions table to support code questions...')
+    
+    // Create temporary table with new schema
+    await dbRun(`
+      CREATE TABLE questions_new (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        quiz_id TEXT NOT NULL,
+        order_index INTEGER NOT NULL,
+        type TEXT NOT NULL CHECK (type IN ('multiple-choice-single', 'multiple-choice-multiple', 'true-false', 'short-answer', 'file-upload', 'code')),
+        question TEXT NOT NULL,
+        options TEXT, -- JSON string for multiple choice options
+        correct_answer TEXT,
+        points INTEGER DEFAULT 1,
+        has_correct_answer BOOLEAN DEFAULT 1,
+        language TEXT, -- Programming language for code questions
+        FOREIGN KEY (quiz_id) REFERENCES quizzes (id) ON DELETE CASCADE
+      )
+    `)
+    
+    // Copy existing data
+    await dbRun(`
+      INSERT INTO questions_new (id, quiz_id, order_index, type, question, options, correct_answer, points, has_correct_answer, language)
+      SELECT id, quiz_id, order_index, type, question, options, correct_answer, points, has_correct_answer, NULL as language
+      FROM questions
+    `)
+    
+    // Drop old table and rename new one
+    await dbRun(`DROP TABLE questions`)
+    await dbRun(`ALTER TABLE questions_new RENAME TO questions`)
+    
+    console.log('Migration completed successfully')
+  } else if (!tableInfo) {
+    // Table doesn't exist - create with proper schema
+    await dbRun(`
+      CREATE TABLE questions (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        quiz_id TEXT NOT NULL,
+        order_index INTEGER NOT NULL,
+        type TEXT NOT NULL CHECK (type IN ('multiple-choice-single', 'multiple-choice-multiple', 'true-false', 'short-answer', 'file-upload', 'code')),
+        question TEXT NOT NULL,
+        options TEXT, -- JSON string for multiple choice options
+        correct_answer TEXT,
+        points INTEGER DEFAULT 1,
+        has_correct_answer BOOLEAN DEFAULT 1,
+        language TEXT, -- Programming language for code questions
+        FOREIGN KEY (quiz_id) REFERENCES quizzes (id) ON DELETE CASCADE
+      )
+    `)
+  }
+
+  // Try to add language column if it doesn't exist (for cases where table exists but is missing language)
+  try {
+    await dbRun(`ALTER TABLE questions ADD COLUMN language TEXT`)
+  } catch (err) {
+    // Column already exists, ignore error
+  }
 
   await dbRun(`
     CREATE TABLE IF NOT EXISTS submissions (
@@ -73,23 +120,25 @@ export interface Quiz {
 export interface Question {
   id: number
   quiz_id: string
-  type: 'multiple-choice-single' | 'multiple-choice-multiple' | 'true-false' | 'short-answer' | 'file-upload'
+  type: 'multiple-choice-single' | 'multiple-choice-multiple' | 'true-false' | 'short-answer' | 'file-upload' | 'code'
   question: string
   options?: string[]
   correct_answer?: string
   points: number
   has_correct_answer: boolean
+  language?: string
 }
 
 interface RawQuestion {
   id: number
   quiz_id: string
-  type: 'multiple-choice-single' | 'multiple-choice-multiple' | 'true-false' | 'short-answer' | 'file-upload'
+  type: 'multiple-choice-single' | 'multiple-choice-multiple' | 'true-false' | 'short-answer' | 'file-upload' | 'code'
   question: string
   options?: string // JSON string in database
   correct_answer?: string
   points: number
   has_correct_answer: number // SQLite boolean as number
+  language?: string
 }
 
 export interface QuizWithQuestions extends Quiz {
@@ -146,8 +195,8 @@ export const createQuiz = async (title: string, description: string, questions: 
 
           const question = questions[index]
           db.run(`
-            INSERT INTO questions (quiz_id, order_index, type, question, options, correct_answer, points, has_correct_answer) 
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+            INSERT INTO questions (quiz_id, order_index, type, question, options, correct_answer, points, has_correct_answer, language) 
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
           `, [
             quizId,
             index,
@@ -156,7 +205,8 @@ export const createQuiz = async (title: string, description: string, questions: 
             question.options ? JSON.stringify(question.options) : null,
             question.correct_answer,
             question.points,
-            question.has_correct_answer ? 1 : 0
+            question.has_correct_answer ? 1 : 0,
+            question.language || null
           ], function(err) {
             if (err) {
               db.run('ROLLBACK')
@@ -272,8 +322,8 @@ export const updateQuiz = async (id: string, title: string, description: string,
 
             const question = questions[index]
             db.run(`
-              INSERT INTO questions (quiz_id, order_index, type, question, options, correct_answer, points, has_correct_answer) 
-              VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+              INSERT INTO questions (quiz_id, order_index, type, question, options, correct_answer, points, has_correct_answer, language) 
+              VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
             `, [
               id,
               index,
@@ -282,7 +332,8 @@ export const updateQuiz = async (id: string, title: string, description: string,
               question.options ? JSON.stringify(question.options) : null,
               question.correct_answer,
               question.points,
-              question.has_correct_answer ? 1 : 0
+              question.has_correct_answer ? 1 : 0,
+              question.language || null
             ], function(err) {
               if (err) {
                 db.run('ROLLBACK')
