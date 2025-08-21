@@ -45,6 +45,8 @@ export default function QuizResults() {
   const [submissions, setSubmissions] = useState<QuizSubmission[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [exporting, setExporting] = useState<string | null>(null) // Track which export is running
+  const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null)
 
   useEffect(() => {
     const fetchSubmissions = async () => {
@@ -64,6 +66,17 @@ export default function QuizResults() {
 
     fetchSubmissions()
   }, [])
+
+  // Auto-hide toast notifications after 5 seconds
+  useEffect(() => {
+    if (toast) {
+      const timer = setTimeout(() => {
+        setToast(null)
+      }, 5000)
+      
+      return () => clearTimeout(timer)
+    }
+  }, [toast])
 
   const formatDate = (dateString: string) => {
     // SQLite CURRENT_TIMESTAMP returns UTC time without timezone indicator
@@ -160,6 +173,88 @@ export default function QuizResults() {
     }
   }
 
+  // Export functions
+  const exportSubmission = async (submissionId: string) => {
+    setExporting(`submission-${submissionId}`)
+    try {
+      const response = await fetch(`/api/export/submission/${submissionId}`)
+      if (!response.ok) {
+        throw new Error('Export failed')
+      }
+      
+      const blob = await response.blob()
+      const url = window.URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = `quiz_result_${Date.now()}.csv`
+      document.body.appendChild(a)
+      a.click()
+      document.body.removeChild(a)
+      window.URL.revokeObjectURL(url)
+      
+      setToast({ message: 'Export completed successfully!', type: 'success' })
+    } catch (error) {
+      console.error('Export failed:', error)
+      setToast({ message: 'Export failed. Please try again.', type: 'error' })
+    } finally {
+      setExporting(null)
+    }
+  }
+
+  const exportAllSubmissions = async (format: 'bulk' | 'summary') => {
+    setExporting(`all-${format}`)
+    try {
+      const response = await fetch(`/api/export/all?format=${format}`)
+      if (!response.ok) {
+        throw new Error('Export failed')
+      }
+      
+      const blob = await response.blob()
+      const url = window.URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = format === 'summary' ? `quiz_summary_${Date.now()}.csv` : `all_results_${Date.now()}.csv`
+      document.body.appendChild(a)
+      a.click()
+      document.body.removeChild(a)
+      window.URL.revokeObjectURL(url)
+      
+      setToast({ message: `${format === 'summary' ? 'Summary' : 'All results'} export completed successfully!`, type: 'success' })
+    } catch (error) {
+      console.error('Export failed:', error)
+      setToast({ message: 'Export failed. Please try again.', type: 'error' })
+    } finally {
+      setExporting(null)
+    }
+  }
+
+  const exportQuizResults = async (quizId: string) => {
+    setExporting(`quiz-${quizId}`)
+    try {
+      const response = await fetch(`/api/export/quiz/${quizId}`)
+      if (!response.ok) {
+        throw new Error('Export failed')
+      }
+      
+      const blob = await response.blob()
+      const url = window.URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = `quiz_results_${Date.now()}.csv`
+      document.body.appendChild(a)
+      a.click()
+      document.body.removeChild(a)
+      window.URL.revokeObjectURL(url)
+      
+      setToast({ message: 'Quiz results export completed successfully!', type: 'success' })
+    } catch (error) {
+      console.error('Export failed:', error)
+      setToast({ message: 'Export failed. Please try again.', type: 'error' })
+    } finally {
+      setExporting(null)
+    }
+  }
+
   if (loading) {
     return (
       <div className="max-w-7xl mx-auto p-6 flex items-center justify-center min-h-[50vh]">
@@ -193,9 +288,33 @@ export default function QuizResults() {
             Back to Results
           </Button>
           <div className="flex gap-2">
-            <Button variant="outline" size="sm" className="flex items-center gap-2 bg-transparent">
-              <Download className="h-4 w-4" />
-              Export Results
+            <Button 
+              variant="outline" 
+              size="sm" 
+              className="flex items-center gap-2 bg-transparent"
+              onClick={() => exportSubmission(selectedSubmission.id)}
+              disabled={exporting !== null}
+            >
+              {exporting === `submission-${selectedSubmission.id}` ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <Download className="h-4 w-4" />
+              )}
+              {exporting === `submission-${selectedSubmission.id}` ? 'Exporting...' : 'Export This Result'}
+            </Button>
+            <Button 
+              variant="outline" 
+              size="sm" 
+              className="flex items-center gap-2 bg-transparent"
+              onClick={() => exportQuizResults(selectedSubmission.quizId)}
+              disabled={exporting !== null}
+            >
+              {exporting === `quiz-${selectedSubmission.quizId}` ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <BarChart3 className="h-4 w-4" />
+              )}
+              {exporting === `quiz-${selectedSubmission.quizId}` ? 'Exporting...' : 'Export Quiz Results'}
             </Button>
           </div>
         </div>
@@ -472,6 +591,28 @@ export default function QuizResults() {
 
   return (
     <div className="max-w-7xl mx-auto p-6">
+      {/* Toast Notification */}
+      {toast && (
+        <div className={`fixed top-4 right-4 z-50 p-4 rounded-md shadow-lg ${
+          toast.type === 'success' ? 'bg-green-500 text-white' : 'bg-red-500 text-white'
+        }`}>
+          <div className="flex items-center gap-2">
+            {toast.type === 'success' ? (
+              <CheckCircle className="h-4 w-4" />
+            ) : (
+              <XCircle className="h-4 w-4" />
+            )}
+            <span>{toast.message}</span>
+            <button 
+              onClick={() => setToast(null)}
+              className="ml-2 text-white hover:text-gray-200"
+            >
+              ×
+            </button>
+          </div>
+        </div>
+      )}
+      
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
         <div>
           <h1 className="text-3xl font-bold">Quiz Results</h1>
@@ -479,18 +620,34 @@ export default function QuizResults() {
         </div>
 
         <div className="flex flex-col sm:flex-row gap-3">
-          {/* <div className="relative">
-            <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-            <input
-              type="search"
-              placeholder="Search submissions..."
-              className="pl-8 h-10 w-full sm:w-[250px] rounded-md border border-input bg-background px-3 py-2 text-sm"
-            />
-          </div> */}
-          {/* <Button variant="outline" className="flex items-center gap-2 bg-transparent">
-            <Download className="h-4 w-4" />
-            Export All
-          </Button> */}
+          <div className="flex gap-2">
+            <Button 
+              variant="outline" 
+              className="flex items-center gap-2 bg-transparent"
+              onClick={() => exportAllSubmissions('bulk')}
+              disabled={exporting !== null}
+            >
+              {exporting === 'all-bulk' ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <Download className="h-4 w-4" />
+              )}
+              {exporting === 'all-bulk' ? 'Exporting...' : 'Export All Results'}
+            </Button>
+            <Button 
+              variant="outline" 
+              className="flex items-center gap-2 bg-transparent"
+              onClick={() => exportAllSubmissions('summary')}
+              disabled={exporting !== null}
+            >
+              {exporting === 'all-summary' ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <BarChart3 className="h-4 w-4" />
+              )}
+              {exporting === 'all-summary' ? 'Exporting...' : 'Export Summary'}
+            </Button>
+          </div>
         </div>
       </div>
 
@@ -602,7 +759,19 @@ export default function QuizResults() {
                                 </p>
                               </div>
 
-                              <div className="p-4 flex items-center justify-end">
+                              <div className="p-4 flex items-center justify-end gap-2">
+                                <Button 
+                                  variant="outline" 
+                                  size="sm"
+                                  onClick={() => exportSubmission(submission.id)}
+                                  disabled={exporting !== null}
+                                >
+                                  {exporting === `submission-${submission.id}` ? (
+                                    <Loader2 className="h-4 w-4 animate-spin" />
+                                  ) : (
+                                    <Download className="h-4 w-4" />
+                                  )}
+                                </Button>
                                 <Button onClick={() => setSelectedSubmission(submission)}>View Details</Button>
                               </div>
                             </div>
