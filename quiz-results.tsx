@@ -8,6 +8,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import { CheckCircle, XCircle, Clock, ChevronRight, Search, Download, BarChart3, Users, Loader2, Maximize2 } from "lucide-react"
 import { CodeEditor } from "@/components/ui/code-editor"
+import { multiSelectScore } from "@/lib/scoring"
 
 // Types
 interface QuizSubmission {
@@ -126,10 +127,13 @@ export default function QuizResults() {
           isCorrect = userAnswer.toLowerCase().trim() === question.correct_answer?.toLowerCase()
         } else if (question.type === 'multiple-choice-multiple') {
           if (question.correct_answer) {
-            const userSelections = userAnswer.split(',').filter(a => a !== '').sort()
-            const correctSelections = question.correct_answer.split(',').sort()
+            const userSelections = userAnswer.split(',').filter(a => a !== '')
+            const correctSelections = question.correct_answer.split(',')
+            const totalOptions = question.options?.length || 0
+            
+            // For display purposes, mark as correct only if fully correct
             isCorrect = userSelections.length === correctSelections.length && 
-                       userSelections.every((val, index) => val === correctSelections[index])
+                       userSelections.sort().every((val, index) => val === correctSelections.sort()[index])
           }
         } else {
           isCorrect = userAnswer === question.correct_answer
@@ -144,7 +148,16 @@ export default function QuizResults() {
         correctAnswer: question.correct_answer,
         isCorrect,
         points: question.points,
-        earnedPoints: question.has_correct_answer && isCorrect ? question.points : 0,
+        earnedPoints: question.has_correct_answer ? 
+          (question.type === 'multiple-choice-multiple' && question.correct_answer ? 
+            (() => {
+              const userSelections = userAnswer.split(',').filter(a => a !== '')
+              const correctSelections = question.correct_answer.split(',')
+              const totalOptions = question.options?.length || 0
+              return totalOptions > 0 ? multiSelectScore(userSelections, correctSelections, totalOptions, question.points) : 0
+            })() : 
+            (isCorrect ? question.points : 0)
+          ) : 0,
         options: question.options,
         hasCorrectAnswer: question.has_correct_answer,
         language: question.language

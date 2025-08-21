@@ -1,4 +1,5 @@
 import { Submission } from './db'
+import { multiSelectScore } from './scoring'
 
 // Helper function to escape CSV values
 const escapeCSVValue = (value: string): string => {
@@ -118,10 +119,13 @@ export const generateBulkCSV = (submissions: any[]): string => {
             isCorrect = userAnswer.toLowerCase().trim() === question.correct_answer?.toLowerCase()
           } else if (question.type === 'multiple-choice-multiple') {
             if (question.correct_answer) {
-              const userSelections = userAnswer.split(',').filter((a: string) => a !== '').sort()
-              const correctSelections = question.correct_answer.split(',').sort()
+              const userSelections = userAnswer.split(',').filter((a: string) => a !== '')
+              const correctSelections = question.correct_answer.split(',')
+              const totalOptions = question.options?.length || 0
+              
+              // For CSV purposes, mark as correct only if fully correct
               isCorrect = userSelections.length === correctSelections.length && 
-                         userSelections.every((val: string, index: number) => val === correctSelections[index])
+                         userSelections.sort().every((val: string, index: number) => val === correctSelections.sort()[index])
             }
           } else {
             isCorrect = userAnswer === question.correct_answer

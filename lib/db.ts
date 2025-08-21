@@ -1,6 +1,7 @@
 import * as sqlite3 from 'sqlite3'
 import * as path from 'path'
 import { promisify } from 'util'
+import { multiSelectScore } from './scoring'
 
 // Enable verbose mode for debugging
 const Database = sqlite3.verbose().Database
@@ -245,11 +246,13 @@ export const submitQuizAnswers = async (quizId: string, studentName: string, stu
       } else if (question.type === 'multiple-choice-multiple') {
         // For multiple choice multiple, both user answer and correct answer are comma-separated strings
         if (userAnswer && question.correct_answer) {
-          const userSelections = userAnswer.split(',').sort()
-          const correctSelections = question.correct_answer.split(',').sort()
-          if (userSelections.length === correctSelections.length && 
-              userSelections.every((val, index) => val === correctSelections[index])) {
-            score += question.points
+          const userSelections = userAnswer.split(',').filter(a => a !== '')
+          const correctSelections = question.correct_answer.split(',')
+          const totalOptions = question.options?.length || 0
+          
+          if (totalOptions > 0) {
+            const partialScore = multiSelectScore(userSelections, correctSelections, totalOptions, question.points)
+            score += partialScore
           }
         }
       } else {
