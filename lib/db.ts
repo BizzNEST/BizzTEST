@@ -1,5 +1,5 @@
-import sqlite3 from 'sqlite3'
-import path from 'path'
+import * as sqlite3 from 'sqlite3'
+import * as path from 'path'
 import { promisify } from 'util'
 
 // Enable verbose mode for debugging
@@ -285,6 +285,11 @@ export const getAllSubmissions = async (): Promise<Submission[]> => {
 export const getSubmissionsByQuizId = async (quizId: string): Promise<Submission[]> => {
   const submissions = await dbAll('SELECT * FROM submissions WHERE quiz_id = ? ORDER BY submitted_at DESC', [quizId]) as Submission[]
   return submissions
+}
+
+export const getSubmissionById = async (id: number): Promise<Submission | null> => {
+  const submission = await dbGet('SELECT * FROM submissions WHERE id = ?', [id]) as Submission | undefined
+  return submission || null
 }
 
 export const updateQuiz = async (id: string, title: string, description: string, questions: Omit<Question, 'id' | 'quiz_id'>[]): Promise<void> => {
