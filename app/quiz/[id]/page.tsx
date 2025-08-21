@@ -13,6 +13,7 @@ import { Badge } from "@/components/ui/badge"
 import { FileUpload } from "@/components/ui/file-upload"
 import { CodeEditor } from "@/components/ui/code-editor"
 import { CheckCircle, XCircle, Clock, Award, Loader2, User, Download, Maximize2 } from "lucide-react"
+import { multiSelectScore } from "@/lib/scoring"
 
 interface Question {
   id: number
@@ -102,12 +103,19 @@ export default function QuizPage() {
           }
         } else if (question.type === "multiple-choice-multiple") {
           if (userAnswer && question.correct_answer) {
-            const userSelections = userAnswer.split(',').filter(a => a !== '').sort()
-            const correctSelections = question.correct_answer.split(',').sort()
-            if (userSelections.length === correctSelections.length && 
-                userSelections.every((val, index) => val === correctSelections[index])) {
-              correctAnswers++
-              earnedPoints += question.points
+            const userSelections = userAnswer.split(',').filter(a => a !== '')
+            const correctSelections = question.correct_answer.split(',')
+            const totalOptions = question.options?.length || 0
+            
+            if (totalOptions > 0) {
+              const partialScore = multiSelectScore(userSelections, correctSelections, totalOptions, question.points)
+              earnedPoints += partialScore
+              
+              // Count as correct only if fully correct for the correctAnswers count
+              if (userSelections.length === correctSelections.length && 
+                  userSelections.sort().every((val, index) => val === correctSelections.sort()[index])) {
+                correctAnswers++
+              }
             }
           }
         } else {
