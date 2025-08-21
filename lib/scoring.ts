@@ -15,5 +15,5 @@ export function multiSelectScore(selected: string[], correct: string[], totalOpt
   const m = totalOptions;
   let s = (TP / k) - (FP / (m - k));
   s = Math.max(0, Math.min(1, s));
-  return s * maxPoints;
+  return Math.round(s * maxPoints * 100) / 100;
 }
