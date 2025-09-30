@@ -1,5 +1,19 @@
 import { NextResponse } from 'next/server'
-import { getAllSubmissions, getQuizById } from '@/lib/db'
+import { getAllSubmissions, getQuizById, deleteSubmission } from '@/lib/db'
+export async function DELETE(request: Request) {
+  try {
+    const url = new URL(request.url)
+    const id = url.searchParams.get('id')
+    if (!id) {
+      return NextResponse.json({ error: 'Missing submission id' }, { status: 400 })
+    }
+    await deleteSubmission(id)
+    return NextResponse.json({ success: true })
+  } catch (error) {
+    console.error('Error deleting submission:', error)
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
+  }
+}
 
 export async function GET() {
   try {

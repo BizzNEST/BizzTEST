@@ -1,3 +1,7 @@
+// Delete a submission by ID
+export const deleteSubmission = async (id: string | number): Promise<void> => {
+  await dbRun('DELETE FROM submissions WHERE id = ?', [id])
+}
 import * as sqlite3 from 'sqlite3'
 import * as path from 'path'
 import { promisify } from 'util'

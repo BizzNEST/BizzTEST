@@ -6,7 +6,7 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Badge } from "@/components/ui/badge"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
-import { CheckCircle, XCircle, Clock, ChevronRight, Search, Download, BarChart3, Users, Loader2, Maximize2 } from "lucide-react"
+import { CheckCircle, XCircle, Clock, ChevronRight, Search, Download, BarChart3, Users, Loader2, Maximize2, Trash2 } from "lucide-react"
 import { CodeEditor } from "@/components/ui/code-editor"
 import { multiSelectScore } from "@/lib/scoring"
 
@@ -48,6 +48,23 @@ export default function QuizResults() {
   const [error, setError] = useState<string | null>(null)
   const [exporting, setExporting] = useState<string | null>(null) // Track which export is running
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null)
+  const [deleting, setDeleting] = useState<string | null>(null)
+
+  // Delete submission handler
+  const handleDeleteSubmission = async (submissionId: string) => {
+    if (!window.confirm('Are you sure you want to delete this submission? This action cannot be undone.')) return;
+    setDeleting(submissionId)
+    try {
+      const response = await fetch(`/api/submissions?id=${submissionId}`, { method: 'DELETE' })
+      if (!response.ok) throw new Error('Failed to delete submission')
+      setSubmissions((subs: QuizSubmission[]) => subs.filter((s: QuizSubmission) => s.id !== submissionId))
+      setToast({ message: 'Submission deleted successfully!', type: 'success' })
+    } catch (err) {
+      setToast({ message: 'Failed to delete submission.', type: 'error' })
+    } finally {
+      setDeleting(null)
+    }
+  }
 
   useEffect(() => {
     const fetchSubmissions = async () => {
@@ -773,6 +790,20 @@ export default function QuizResults() {
                               </div>
 
                               <div className="p-4 flex items-center justify-end gap-2">
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  className="text-red-600 hover:bg-red-50"
+                                  title="Delete Submission"
+                                  onClick={() => handleDeleteSubmission(submission.id)}
+                                  disabled={deleting === submission.id || exporting !== null}
+                                >
+                                  {deleting === submission.id ? (
+                                    <Loader2 className="h-4 w-4 animate-spin" />
+                                  ) : (
+                                    <Trash2 className="h-4 w-4" />
+                                  )}
+                                </Button>
                                 <Button 
                                   variant="outline" 
                                   size="sm"
